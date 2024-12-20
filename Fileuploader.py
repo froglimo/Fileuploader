@@ -7,7 +7,7 @@ import io
 import sqlite3
 
 root = tk.Tk()
-root.geometry("800x400")
+root.geometry("800x700")
 root.title("Fileuploader")
 
 def setup_database():
@@ -30,7 +30,10 @@ def save_image_to_db(image_data):
     conn.commit()
     conn.close()
 
-
+def Hilfe():
+    Hilfe = tk.Tk()
+    Hilfe = tk.Toplevel()
+    root.withdraw()
 
 menubar = Menu(root,
             background="grey"
@@ -68,7 +71,7 @@ help_menu = Menu(
     background="grey",
 )
 
-help_menu.add_command(label='Max')
+help_menu.add_command(label='Max...', command=Hilfe)
 help_menu.add_command(label='Über...')
 
 # add the Help menu to the menubar
@@ -80,14 +83,14 @@ menubar.add_cascade(
 labelFrame1 = tk.LabelFrame(root,
                             text="Fileuploader",
                             background="lightgreen",
-                            width=800,
+                            width=1920,
                             height=50,)
 labelFrame1.pack()
 
 LabelFrame2 = tk.LabelFrame(root,
                             background="orange",
-                            width=800,
-                            height=350)
+                            width=1900,
+                            height=500)
 LabelFrame2.pack()
 
 def OpenFilebtn1():
@@ -107,11 +110,11 @@ def btn2Click(self):
  OpenFilebtn2()
 
 label_time = LabelFrame(LabelFrame2, pady= 0, padx= 0, bg='lightgray')
-label_time.pack()
+label_time.pack(pady=10, padx=10, expand=TRUE)
 btn1 = Button(label_time, text = "Dateien hochladen", command=OpenFilebtn1)
-btn1.pack(ipadx=60)
+btn1.pack(ipadx=60, padx=20, pady=10)
 btn2 = Button(label_time, text = "Dateien runterladen", command=OpenFilebtn2)
-btn2.pack(ipadx=60)
+btn2.pack(ipadx=60, padx=20, pady=10)
 
 def DragEvent(event):
   
@@ -119,15 +122,15 @@ def DragEvent(event):
     def __init__(self, root):
         self.root = root
         self.root.title("Drawing Canvas")
-        self.canvas = Canvas(root, bg="white", width=400, height=400)
-        self.canvas.pack()
+        self.canvas1 = Canvas(root, bg="grey", width=400, height=400)
+        self.canvas1.pack()
 
         # Initialize Pillow Image and ImageDraw
         self.image = Image.new("RGB", (400, 400), "white")
         self.draw = ImageDraw.Draw(self.image)
 
         # Bind mouse events for drawing
-        self.canvas.bind("<B1-Motion>", self.paint)
+        self.canvas1.bind("<B1-Motion>", self.paint)
         self.last_x, self.last_y = None, None
 
         # Save button
@@ -137,7 +140,7 @@ def DragEvent(event):
     def paint(self, event):
         x, y = event.x, event.y
         if self.last_x and self.last_y:
-            self.canvas.create_line(self.last_x, self.last_y, x, y, fill="black", width=2)
+            self.canvas1.create_line(self.last_x, self.last_y, x, y, fill="black", width=2)
             self.draw.line((self.last_x, self.last_y, x, y), fill="black", width=2)
         self.last_x, self.last_y = x, y
 
@@ -153,9 +156,19 @@ def DragEvent(event):
         print("Image saved to database!")
 
     def run(self):
-        self.canvas.bind("<ButtonRelease-1>", self.reset)
+        self.canvas1.bind("<ButtonRelease-1>", self.reset)
         
-Canvas = tk.Canvas(root)
-Canvas.pack()
+labelframe3 = tk.LabelFrame(root,
+                            width=800,
+                            height=500,
+                            bg="grey")
+labelframe3.pack()
+
+labelframe4 = tk.LabelFrame(root,
+                            width=1920,
+                            height=50,
+                            bg="lightgreen",
+                            text="""Erstellt durch Max Krebs. 2024""")
+labelframe4.pack(padx=0,pady=0)
 
 root.mainloop()
