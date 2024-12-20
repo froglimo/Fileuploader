@@ -154,5 +154,8 @@ def DragEvent(event):
 
     def run(self):
         self.canvas.bind("<ButtonRelease-1>", self.reset)
+        
+Canvas = tk.Canvas(root)
+Canvas.pack()
 
 root.mainloop()
