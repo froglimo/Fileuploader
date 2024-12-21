@@ -116,9 +116,7 @@ btn1.pack(ipadx=60, padx=20, pady=10)
 btn2 = Button(label_time, text = "Dateien runterladen", command=OpenFilebtn2)
 btn2.pack(ipadx=60, padx=20, pady=10)
 
-def DragEvent(event):
-  
- class DrawingApp:
+class DrawingApp:
     def __init__(self, root):
         self.root = root
         self.root.title("Drawing Canvas")
@@ -126,7 +124,7 @@ def DragEvent(event):
         self.canvas1.pack()
 
         # Initialize Pillow Image and ImageDraw
-        self.image = Image.new("RGB", (400, 400), "white")
+        self.image = Image.new("RGB", (800, 500), "white")
         self.draw = ImageDraw.Draw(self.image)
 
         # Bind mouse events for drawing
@@ -157,14 +155,21 @@ def DragEvent(event):
 
     def run(self):
         self.canvas1.bind("<ButtonRelease-1>", self.reset)
-        
-labelframe3 = tk.LabelFrame(root,
-                            width=800,
-                            height=500,
-                            bg="grey",
-                            
-                            )
-labelframe3.pack()
+
+Canvas1 = tk.Canvas(root,
+                    width=800,
+                    height=500,
+                    bg="grey",
+                    )
+Canvas1.bind_class(DrawingApp)
+Canvas1.pack()
+   
+# Main function to run the app
+if __name__ == "__main__":
+    root = Tk()
+    app = DrawingApp(root)
+    app.run()
+    root.mainloop()
 
 labelframe4 = tk.LabelFrame(root,
                             width=1920,
@@ -172,5 +177,28 @@ labelframe4 = tk.LabelFrame(root,
                             bg="lightgreen",
                             text="""Erstellt durch Max Krebs. 2024""")
 labelframe4.pack(padx=0,pady=0)
+
+def retrieve_image_from_db(image_id):
+    conn = sqlite3.connect("drawings.db")
+    cursor = conn.cursor()
+    cursor.execute("SELECT image FROM images WHERE id=?", (image_id,))
+    result = cursor.fetchone()
+    conn.close()
+    if result:
+        image_data = result[0]
+        image = Image.open(io.BytesIO(image_data))
+        return image
+    return None
+
+# Example usage to display retrieved image in a new Tkinter window
+def display_retrieved_image(image_id):
+    image = retrieve_image_from_db(image_id)
+    if image:
+        window = Toplevel()
+        window.title("Retrieved Image")
+        tk_image = ImageTk.PhotoImage(image)
+        label = Label(window, image=tk_image)
+        label.image = tk_image  # Keep a reference
+        label.pack()
 
 root.mainloop()
