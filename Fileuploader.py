@@ -1,6 +1,6 @@
 from tkinter import *
 import tkinter as tk
-from PIL import *
+from PIL import Image, ImageTk
 from os import *
 import easygui
 import io
@@ -161,7 +161,9 @@ def DragEvent(event):
 labelframe3 = tk.LabelFrame(root,
                             width=800,
                             height=500,
-                            bg="grey")
+                            bg="grey",
+                            
+                            )
 labelframe3.pack()
 
 labelframe4 = tk.LabelFrame(root,
