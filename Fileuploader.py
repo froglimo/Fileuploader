@@ -1,6 +1,6 @@
 from tkinter import *
 import tkinter as tk
-from PIL import Image, ImageTk
+from PIL import ImageDraw, ImageTk
 from os import *
 import easygui
 import io
