@@ -124,7 +124,9 @@ class DrawingApp:
         self.canvas1.pack()
 
         # Initialize Pillow Image and ImageDraw
-        self.image = Image.new("RGB", (800, 500), "white")
+        self.__class__(DrawingApp)
+        NameBild = Image(master=DrawingApp, imgtype=".png, .jpg")
+        self.image = Image("Bild1",(800, 500), ".jpeg", ".png",NameBild)
         self.draw = ImageDraw.Draw(self.image)
 
         # Bind mouse events for drawing
