@@ -98,7 +98,7 @@ def OpenFilebtn1():
  root.withdraw()
  Dateipfad = easygui.fileopenbox()
 
-def btn1Click(self):
+def btn1Click(Canvas1):
  OpenFilebtn1()
 
 def OpenFilebtn2():
@@ -106,7 +106,7 @@ def OpenFilebtn2():
  root.withdraw()
  Dateipfad = easygui.filesavebox()
 
-def btn2Click(self):
+def btn2Click(Canvas1):
  OpenFilebtn2()
 
 label_time = LabelFrame(LabelFrame2, pady= 0, padx= 0, bg='lightgray')
@@ -116,62 +116,12 @@ btn1.pack(ipadx=60, padx=20, pady=10)
 btn2 = Button(label_time, text = "Dateien runterladen", command=OpenFilebtn2)
 btn2.pack(ipadx=60, padx=20, pady=10)
 
-class DrawingApp:
-    def __init__(self, root):
-        self.root = root
-        self.root.title("Drawing Canvas")
-        self.canvas1 = Canvas(root, bg="grey", width=400, height=400)
-        self.canvas1.pack()
-
-        # Initialize Pillow Image and ImageDraw
-        self.__class__(DrawingApp)
-        NameBild = Image(master=DrawingApp, imgtype=".png, .jpg")
-        self.image = Image("Bild1",(800, 500), ".jpeg", ".png",NameBild)
-        self.draw = ImageDraw.Draw(self.image)
-
-        # Bind mouse events for drawing
-        self.canvas1.bind("<B1-Motion>", self.paint)
-        self.last_x, self.last_y = None, None
-
-        # Save button
-        save_button = Button(root, text="Save", command=self.save_drawing)
-        save_button.pack()
-
-    def paint(self, event):
-        x, y = event.x, event.y
-        if self.last_x and self.last_y:
-            self.canvas1.create_line(self.last_x, self.last_y, x, y, fill="black", width=2)
-            self.draw.line((self.last_x, self.last_y, x, y), fill="black", width=2)
-        self.last_x, self.last_y = x, y
-
-    def reset(self, event):
-        self.last_x, self.last_y = None, None
-
-    def save_drawing(self):
-        # Save the Pillow image to a binary format (like PNG in memory)
-        byte_io = io.BytesIO()
-        self.image.save(byte_io, "PNG")
-        image_data = byte_io.getvalue()
-        save_image_to_db(image_data)
-        print("Image saved to database!")
-
-    def run(self):
-        self.canvas1.bind("<ButtonRelease-1>", self.reset)
-
-Canvas1 = tk.Canvas(root,
-                    width=800,
-                    height=500,
-                    bg="grey",
-                    )
-Canvas1.bind_class(DrawingApp)
+Canvas1 = tk.Canvas(
+    root,
+    width=400,
+    height=400,
+)
 Canvas1.pack()
-   
-# Main function to run the app
-if __name__ == "__main__":
-    root = Tk()
-    app = DrawingApp(root)
-    app.run()
-    root.mainloop()
 
 labelframe4 = tk.LabelFrame(root,
                             width=1920,
@@ -180,10 +130,10 @@ labelframe4 = tk.LabelFrame(root,
                             text="""Erstellt durch Max Krebs. 2024""")
 labelframe4.pack(padx=0,pady=0)
 
-def retrieve_image_from_db(image_id):
-    conn = sqlite3.connect("drawings.db")
+def retrieve_files_from_db(file_id):
+    conn = sqlite3.connect("files.db")
     cursor = conn.cursor()
-    cursor.execute("SELECT image FROM images WHERE id=?", (image_id,))
+    cursor.execute("SELECT file FROM files WHERE id=?", (file_id,))
     result = cursor.fetchone()
     conn.close()
     if result:
@@ -193,8 +143,8 @@ def retrieve_image_from_db(image_id):
     return None
 
 # Example usage to display retrieved image in a new Tkinter window
-def display_retrieved_image(image_id):
-    image = retrieve_image_from_db(image_id)
+def display_retrieved_file(file_id):
+    image = retrieve_files_from_db(file_id)
     if image:
         window = Toplevel()
         window.title("Retrieved Image")
