@@ -5,13 +5,12 @@ from PIL import Image, ImageTk
 import sqlite3
 import io
 import os
+from tkinter import Menu, LabelFrame, Button, Label, Toplevel, filedialog, messagebox, BOTTOM, TRUE, Listbox, Scrollbar, END
 from urllib.request import urlopen
 
-# Helper to get absolute path for resources
 def resource_path(filename):
     return os.path.join(os.path.dirname(__file__), filename)
 
-# Main window
 root = tk.Tk()
 root.geometry("800x800")
 root.title("Fileuploader")
@@ -123,6 +122,27 @@ labelFrame2.pack(pady=30, fill="x")
 Canvas1 = tk.Canvas(root, width=1920, height=500, background="lightgrey")
 Canvas1.pack()
 
+file_listbox = Listbox(labelFrame2, width=80, height=8)
+file_listbox.pack(pady=10, padx=10, side="left")
+scrollbar = Scrollbar(labelFrame2, orient="vertical", command=file_listbox.yview)
+scrollbar.pack(side="left", fill="y")
+file_listbox.config(yscrollcommand=scrollbar.set)
+def save_file_to_db(filename, filetype, filedata):
+    conn = setup_database()
+    cursor = conn.cursor()
+    cursor.execute("INSERT INTO files (filename, filetype, filedata) VALUES (?, ?, ?)", (filename, filetype, filedata))
+    conn.commit()
+    conn.close()
+
+def refresh_file_list():
+    file_listbox.delete(0, END)
+    conn = setup_database()
+    cursor = conn.cursor()
+    cursor.execute("SELECT id, filename, filetype FROM files ORDER BY id DESC")
+    for row in cursor.fetchall():
+        file_listbox.insert(END, f"{row[0]}: {row[1]} ({row[2]})")
+    conn.close()
+
 def OpenFilebtn1():
     file_path = filedialog.askopenfilename(
         parent=root,
@@ -137,43 +157,63 @@ def OpenFilebtn1():
     )
     if file_path:
         try:
-            img = Image.open(file_path)
-            img.thumbnail((400, 400))
-            img_tk = ImageTk.PhotoImage(img)
-            img_label = Label(Canvas1, image=img_tk)
-            img_label.image = img_tk
-            img_label.pack()
+            filename = os.path.basename(file_path)
+            filetype = os.path.splitext(filename)[1].lower().replace('.', '')
             with open(file_path, "rb") as f:
-                save_image_to_db(f.read())
+                filedata = f.read()
+            save_file_to_db(filename, filetype, filedata)
+            # Show thumbnail if image, else show label
+            if filetype in ['jpg', 'jpeg', 'png', 'gif', 'bmp']:
+                img = Image.open(io.BytesIO(filedata))
+                img.thumbnail((100, 100))
+                img_tk = ImageTk.PhotoImage(img)
+                img_label = Label(Canvas1, image=img_tk)
+                img_label.image = img_tk
+                img_label.pack()
+            else:
+                lbl = Label(Canvas1, text=f"{filename} ({filetype.upper()})", bg="lightgrey")
+                lbl.pack()
+            refresh_file_list()
         except Exception as e:
             messagebox.showerror("Fehler", f"Datei konnte nicht geöffnet werden:\n{e}")
 
-
 def OpenFilebtn2():
-    file_path = filedialog.asksaveasfilename(
-    parent=root,
-    title="Datei speichern unter",
-    titel = "Dateien zum Speichern auswählen!",
-    filetypes =[
-            ("PDF files", "*.pdf"),
-            ("JPEG files", "*.jpg;*.jpeg"),
-            ("ZIP files", "*.zip"),
-            ("Word documents", "*.docx"),
-            ("All files", "*.*"),
-        ]
-    )
-    if file_path:
-        conn = setup_database()
-        cursor = conn.cursor()
-        cursor.execute("SELECT image FROM images ORDER BY id DESC LIMIT 1")
-        result = cursor.fetchone()
-        conn.close()
-        if result:
-            with open(file_path, "wb") as f:
-                f.write(result[0])
-            messagebox.showinfo("Erfolg", "Datei wurde gespeichert.")
-        else:
-            messagebox.showwarning("Keine Datei", "Keine gespeicherte Datei gefunden.")
+    selection = file_listbox.curselection()
+    if not selection:
+        messagebox.showwarning("Keine Auswahl", "Bitte wählen Sie eine Datei aus der Liste aus.")
+        return
+    selected_index = selection[0]
+    file_id = int(file_listbox.get(selected_index).split(":")[0])
+    conn = setup_database()
+    cursor = conn.cursor()
+    cursor.execute("SELECT filename, filetype, filedata FROM files WHERE id=?", (file_id,))
+    result = cursor.fetchone()
+    conn.close()
+    if result:
+        filename, filetype, filedata = result
+        save_path = filedialog.asksaveasfilename(
+            parent=root,
+            title="Datei speichern unter",
+            initialfile=filename,
+            defaultextension=f".{filetype}",
+            filetypes=[
+                ("PDF files", "*.pdf"),
+                ("JPEG files", "*.jpg;*.jpeg"),
+                ("ZIP files", "*.zip"),
+                ("Word documents", "*.docx"),
+                ("All files", "*.*"),
+            ]
+        )
+        if save_path:
+            try:
+                with open(save_path, "wb") as f:
+                    f.write(filedata)
+                messagebox.showinfo("Erfolg", "Datei wurde gespeichert.")
+            except Exception as e:
+                messagebox.showerror("Fehler", f"Beim Speichern ist ein Fehler aufgetreten:\n{e}")
+    else:
+        messagebox.showwarning("Keine Datei", "Keine gespeicherte Datei gefunden.")
+
 
 label_time = LabelFrame(labelFrame2, pady=0, padx=0, bg='lightgray')
 label_time.pack(pady=10, padx=10, expand=TRUE)
