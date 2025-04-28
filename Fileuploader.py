@@ -15,24 +15,50 @@ root = tk.Tk()
 root.geometry("800x800")
 root.title("Fileuploader")
 
-def setup_database():
-    conn = sqlite3.connect(resource_path("drawings.db"))
-    cursor = conn.cursor()
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS images (
-            id INTEGER PRIMARY KEY,
-            image BLOB
-        )
-    ''')
-    conn.commit()
-    return conn
-
 def save_image_to_db(image_data):
     conn = setup_database()
     cursor = conn.cursor()
     cursor.execute("INSERT INTO images (image) VALUES (?)", (image_data,))
     conn.commit()
     conn.close()
+    
+def setup_database() -> sqlite3.Connection:
+    """
+    Open (and if necessary create) the `drawings.db` database and make sure
+    the required tables exist.
+
+    Tables
+    ------
+    files   id | filename | filetype | filedata
+    images  id | image
+    """
+    conn = sqlite3.connect(resource_path("drawings.db"))
+    cursor = conn.cursor()
+
+    # Main table for arbitrary uploaded files
+    cursor.execute(
+        """
+        CREATE TABLE IF NOT EXISTS files (
+            id        INTEGER PRIMARY KEY AUTOINCREMENT,
+            filename  TEXT    NOT NULL,
+            filetype  TEXT    NOT NULL,
+            filedata  BLOB    NOT NULL
+        )
+        """
+    )
+
+    # Optional table for standalone images (kept for compatibility)
+    cursor.execute(
+        """
+        CREATE TABLE IF NOT EXISTS images (
+            id     INTEGER PRIMARY KEY AUTOINCREMENT,
+            image  BLOB NOT NULL
+        )
+        """
+    )
+
+    conn.commit()
+    return conn
 
 def updates():
     if isinstance(menubar, Menu):
