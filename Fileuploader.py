@@ -108,7 +108,6 @@ menubar.add_cascade(label="Hilfe", menu=help_menu)
 labelFrame1 = LabelFrame(root, text="Fileuploader", background="lightgreen", width=1920, height=50)
 labelFrame1.pack(fill="x")
 
-# Load image from URL and display
 try:
     data = urlopen("https://play-lh.googleusercontent.com/OQEWNsErMUfkv31UL7LNKgCqCunc4rW-L6YUX-EyxGleqKPPo1Y6MxJXWuOoJoBhtGg").read()
     pil_image = Image.open(io.BytesIO(data))
