@@ -1,54 +1,18 @@
-
-I need to build a Python GUI program with the following features:
-- Button to upload files (supporting images, PDFs, docs, zip)
-- Button to download files from an SQLite database
-- Drag & drop canvas for file upload
-- A widget showing all added files, with clickable symbols to add, delete, and refresh database view
-- The widget must show all added files and allow manipulation accordingly
-
-The design inspiration is "Default" style with minimal, elegant UI, light background, clear spatial separation and subtle rounded corners. I will keep typography and colors light and gentle.
-
-For the GUI toolkit in Python, the best choice for rich modern UI and drag & drop is PyQt5 or PyQt6 or PySide6. I'll choose PyQt5 because it is widely used. It supports drag & drop, buttons, icons, and SQLite.
-
-We will:
-- Use QMainWindow with QVBoxLayout or QGridLayout
-- Create buttons for upload and download
-- Create a drag & drop area (custom QWidget)
-- Create a QListWidget or similar to display files from the database with clickable icons for delete and refresh
-- Use SQLite3 to store files in a table with id, filename, filetype, and file binary content
-- Support file upload (from dialog or drag & drop) storing files in the database
-- Support download of selected file from the list (writing to disk)
-- Provide refresh button to reload the list from database
-
-Implementation plan:
-1. Overall window structure: top buttons, dragdrop area, file list widget on right or bottom
-2. Drag & drop widget: accept defined files, on drop save file in DB and refresh list
-3. File upload button: open QFileDialog, select files, save to DB, refresh list
-4. File download button: select file(s) from list, prompt save location, write file content
-5. File list widget: show items with filename, filetype icon, buttons for delete and refresh total list
-6. SQLite integration: file table with id, filename, mimetype, binary data
-7. Styling with light background, subtle rounded corners, consistent spacing
-
-Because the user didn't require separate files, I will provide a single Python script that is self-contained and executable.
-
-Now I will proceed with the implementation.
-
-
-
-`file_manager_gui.py`
-```py
 import sys
 import os
 import sqlite3
 import mimetypes
 
-from PyQt5.QtWidgets import (
-    QApplication, QMainWindow, QPushButton, QFileDialog, QWidget, QVBoxLayout, QHBoxLayout,
-    QListWidget, QListWidgetItem, QLabel, QMessageBox, QAbstractItemView, QStyle, QGridLayout, QFrame
-)
+from PyQt5.QtWidgets import QApplication, QMainWindow, QPushButton, QFileDialog, QWidget, QVBoxLayout, QHBoxLayout, QListWidget, QListWidgetItem, QLabel, QMessageBox, QAbstractItemView, QStyle, QGridLayout, QFrame
 from PyQt5.QtCore import Qt, QMimeData, QByteArray, QSize, QBuffer, QIODevice
 from PyQt5.QtGui import QDragEnterEvent, QDropEvent, QIcon, QPixmap
 
+def main():
+    app = QApplication(sys.argv)
+    app.setStyle("Fusion")
+    window = MainWindow()
+    window.show()
+    sys.exit(app.exec_())
 
 DB_NAME = "file_manager.db"
 
@@ -218,7 +182,7 @@ class FileListWidget(QWidget):
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("File Manager GUI")
+        self.setWindowTitle("Fileuploader")
         self.setMinimumSize(800, 600)
 
         # Central widget and main layout
@@ -235,20 +199,20 @@ class MainWindow(QMainWindow):
         self._init_db()
 
         # Upload button
-        self.btn_upload = QPushButton("Upload Files")
+        self.btn_upload = QPushButton("Dateien hochladen")
         self.btn_upload.setFixedHeight(48)
         self.btn_upload.setStyleSheet(self._button_style())
-        self.btn_upload.setToolTip("Select files to upload")
+        self.btn_upload.setToolTip("Dateien auswählen")
 
         # Download button
-        self.btn_download = QPushButton("Download Selected File")
+        self.btn_download = QPushButton("Dateien herunterladen")
         self.btn_download.setFixedHeight(48)
         self.btn_download.setStyleSheet(self._button_style())
-        self.btn_download.setToolTip("Download selected file from database")
+        self.btn_download.setToolTip("Dateien auswählen")
 
         # Drag and drop widget
         self.drag_drop = DragDropWidget()
-        self.drag_drop.setToolTip("Drag and drop files here")
+        self.drag_drop.setToolTip("Dateien hier hinziehen")
         self.drag_drop.on_files_dropped = self.handle_files_upload
 
         # File list widget (with add, delete, refresh)
@@ -316,9 +280,9 @@ class MainWindow(QMainWindow):
         options = QFileDialog.Options()
         files, _ = QFileDialog.getOpenFileNames(
             self,
-            "Select files to upload",
+            "Auswahl der Dateien",
             "",
-            "All Supported Files (*.png *.jpg *.jpeg *.bmp *.pdf *.doc *.docx *.zip);;Images (*.png *.jpg *.jpeg *.bmp);;PDF (*.pdf);;Documents (*.doc *.docx);;Zip archives (*.zip)",
+            "Alle unterstützten Dateien (*.png *.jpg *.jpeg *.bmp *.pdf *.doc *.docx *.zip);;Images (*.png *.jpg *.jpeg *.bmp);;PDF (*.pdf);;Documents (*.doc *.docx);;Zip archives (*.zip)",
             options=options
         )
         if files:
@@ -377,8 +341,8 @@ class MainWindow(QMainWindow):
 
         confirm = QMessageBox.question(
             self,
-            "Confirm Delete",
-            "Are you sure you want to delete the selected file?",
+            "Löschen bestätigen",
+            "Wollen Sie die ausgewählte Datei wirklich löschen?",
             QMessageBox.Yes | QMessageBox.No
         )
         if confirm == QMessageBox.Yes:
@@ -390,14 +354,14 @@ class MainWindow(QMainWindow):
     def download_selected_file(self):
         file_id = self.file_widget.selected_file_id()
         if not file_id:
-            QMessageBox.information(self, "No Selection", "Please select a file to download.")
+            QMessageBox.information(self, "Keine Auswahl!", "Bitte eine Datei auswählen, um sie herunterzuladen.")
             return
 
         cursor = self.conn.cursor()
         cursor.execute("SELECT filename, data FROM files WHERE id = ?", (file_id,))
         result = cursor.fetchone()
         if not result:
-            QMessageBox.warning(self, "Error", "Selected file not found in database.")
+            QMessageBox.warning(self, "Fehler", "Datei existiert nicht oder wurde gelöscht.")
             return
 
         filename, data = result
@@ -421,16 +385,6 @@ class MainWindow(QMainWindow):
         self.conn.close()
         event.accept()
 
-
-def main():
-    app = QApplication(sys.argv)
-    app.setStyle("Fusion")
-    window = MainWindow()
-    window.show()
-    sys.exit(app.exec_())
-
-
 if __name__ == "__main__":
     main()
 
-```
