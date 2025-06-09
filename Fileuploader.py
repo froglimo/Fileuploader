@@ -3,28 +3,48 @@ import os
 import sqlite3
 import mimetypes
 
-from PyQt5.QtWidgets import QFileIconProvider, QApplication, QMainWindow, QPushButton, QFileDialog, QWidget, QVBoxLayout, QHBoxLayout, QListWidget, QListWidgetItem, QLabel, QMessageBox, QAbstractItemView, QStyle, QGridLayout, QFrame
-from PyQt5.QtCore import Qt, QMimeData, QByteArray, QSize, QBuffer, QIODevice
-from PyQt5.QtGui import QDragEnterEvent, QDropEvent, QIcon, QPixmap
-
-def main():
-    app = QApplication(sys.argv)
-    app.setStyle("Fusion")
-    window = MainWindow()
-    window.show()
-    sys.exit(app.exec_())
+from PyQt5.QtWidgets import (
+    QApplication,
+    QMainWindow,
+    QWidget,
+    QVBoxLayout,
+    QHBoxLayout,
+    QGridLayout,
+    QFrame,
+    QPushButton,
+    QFileDialog,
+    QListWidget,
+    QListWidgetItem,
+    QLabel,
+    QMessageBox,
+    QAbstractItemView,
+    QStyle,
+    QAction,
+)
+from PyQt5.QtCore import Qt
+from PyQt5.QtGui import QDragEnterEvent, QDropEvent, QIcon
 
 DB_NAME = "file_manager.db"
 
+
+# --------------------------------------------------------------------------- #
+# Drag-and-drop frame
+# --------------------------------------------------------------------------- #
 class DragDropWidget(QFrame):
     """
-    Custom widget that accepts drag and drop of files.
+    Simple frame that accepts files via drag & drop.
+    The parent is expected to set self.on_files_dropped -> callable(list[str]).
     """
+
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setAcceptDrops(True)
         self.setFixedHeight(150)
-        self.setStyleSheet("""
+        self.on_files_dropped = None
+
+        # Styling
+        self.setStyleSheet(
+            """
             QFrame {
                 border: 2px dashed #a3a3a3;
                 border-radius: 12px;
@@ -35,19 +55,15 @@ class DragDropWidget(QFrame):
                 font-size: 18px;
                 font-weight: 600;
             }
-        """)
-        self.layout = QVBoxLayout()
-        self.label = QLabel("Dateien für Drag & Drop hier ablegen")
-        self.label.setAlignment(Qt.AlignCenter)
-        self.layout.addWidget(self.label)
-        self.setLayout(self.layout)
-        self.on_files_dropped = None
-        
-    def initUI(self):
-        self.setGeometry(100, 100, 600, 400)
-        self.setWindowTitle("Fileuploader Drag & Drop")
-        self.setWindowIcon(QIcon('icon1.png'))  # Set your own icon here
+        """
+        )
 
+        self._layout = QVBoxLayout(self)
+        label = QLabel("Dateien für Drag & Drop hier ablegen")
+        label.setAlignment(Qt.AlignCenter)
+        self._layout.addWidget(label)
+
+    # Qt drag / drop handlers ------------------------------------------------ #
     def dragEnterEvent(self, event: QDragEnterEvent):
         if event.mimeData().hasUrls():
             event.acceptProposedAction()
@@ -62,44 +78,49 @@ class DragDropWidget(QFrame):
 
     def dropEvent(self, event: QDropEvent):
         if event.mimeData().hasUrls():
-            files = []
-            for url in event.mimeData().urls():
-                if url.isLocalFile():
-                    files.append(url.toLocalFile())
+            local_files = [
+                url.toLocalFile() for url in event.mimeData().urls() if url.isLocalFile()
+            ]
             if self.on_files_dropped:
-                self.on_files_dropped(files)
+                self.on_files_dropped(local_files)
             event.acceptProposedAction()
         else:
             event.ignore()
 
 
+# --------------------------------------------------------------------------- #
+# File list (right pane)
+# --------------------------------------------------------------------------- #
 class FileListWidget(QWidget):
     """
-    Widget showing all files in database with icons to delete, refresh, and download.
+    Shows database content plus toolbar buttons (add, delete, download, refresh).
     """
-    def __init__(self):
-        super().__init__()
-        self.layout = QVBoxLayout()
-        self.setLayout(self.layout)
-        self.layout.setContentsMargins(0, 0, 0, 0)
 
-        # Header with action buttons
+    def __init__(self, parent=None):
+        super().__init__(parent)
+
+        main_layout = QVBoxLayout(self)
+        main_layout.setContentsMargins(0, 0, 0, 0)
+
+        # Header
         header_layout = QHBoxLayout()
-        header_layout.setContentsMargins(10,10,10,10)
+        header_layout.setContentsMargins(10, 10, 10, 10)
 
         self.btn_refresh = QPushButton()
         self.btn_refresh.setIcon(self.style().standardIcon(QStyle.SP_BrowserReload))
+        self.btn_refresh.setFixedSize(32, 32)
         self.btn_refresh.setToolTip("Dateiliste aktualisieren")
-        self.btn_refresh.setFixedSize(32,32)
+
         header_layout.addWidget(QLabel("Gespeicherte Dateien:"))
         header_layout.addStretch()
         header_layout.addWidget(self.btn_refresh)
-        self.layout.addLayout(header_layout)
+        main_layout.addLayout(header_layout)
 
-        # List widget to show files
+        # List
         self.list_widget = QListWidget()
         self.list_widget.setSelectionMode(QAbstractItemView.SingleSelection)
-        self.list_widget.setStyleSheet("""
+        self.list_widget.setStyleSheet(
+            """
             QListWidget {
                 border: none;
                 font-size: 14px;
@@ -114,142 +135,182 @@ class FileListWidget(QWidget):
             QListWidget::item:selected {
                 background-color: #e0e7ff;
             }
-        """)
-        self.layout.addWidget(self.list_widget)
+        """
+        )
+        main_layout.addWidget(self.list_widget)
 
-        # Buttons below list
+        # Footer buttons
         btn_layout = QHBoxLayout()
         self.btn_add = QPushButton()
         self.btn_add.setIcon(self.style().standardIcon(QStyle.SP_DialogOpenButton))
+        self.btn_add.setFixedSize(36, 36)
         self.btn_add.setToolTip("Dateien hinzufügen")
-        self.btn_add.setFixedSize(36,36)
 
         self.btn_delete = QPushButton()
         self.btn_delete.setIcon(self.style().standardIcon(QStyle.SP_TrashIcon))
+        self.btn_delete.setFixedSize(36, 36)
         self.btn_delete.setToolTip("Ausgewählte Datei löschen")
-        self.btn_delete.setFixedSize(36,36)
 
         self.btn_download = QPushButton()
         self.btn_download.setIcon(self.style().standardIcon(QStyle.SP_DialogSaveButton))
+        self.btn_download.setFixedSize(36, 36)
         self.btn_download.setToolTip("Ausgewählte Datei herunterladen")
-        self.btn_download.setFixedSize(36,36)
 
         btn_layout.addWidget(self.btn_add)
         btn_layout.addWidget(self.btn_delete)
         btn_layout.addWidget(self.btn_download)
         btn_layout.addStretch()
-        self.layout.addLayout(btn_layout)
+        main_layout.addLayout(btn_layout)
 
-    def add_file_item(self, file_id, filename, filetype):
-        """
-        Add a single file item to the list widget with icon.
-        """
-        item = QListWidgetItem()
-        # Set icon based on filetype
-        icon = self._get_icon_for_type(filetype)
-        item.setIcon(icon)
-        display_text = f"{filename} ({filetype})"
-        item.setText(display_text)
-        item.setData(Qt.UserRole, file_id)
-        self.list_widget.addItem(item)
-
-    @staticmethod
-    def _get_icon_for_type(mime_type):
-        # Use standard icons for known file types
-        if mime_type.startswith("image/"):
-            return QIcon.fromTheme("image-x-generic") or QApplication.style().standardIcon(QStyle.SP_FileIcon)
-        elif "pdf" in mime_type:
-            return QIcon.fromTheme("application-pdf") or QApplication.style().standardIcon(QStyle.SP_FileIcon)
-        elif "zip" in mime_type or "compressed" in mime_type:
-            return QIcon.fromTheme("package-x-generic") or QApplication.style().standardIcon(QStyle.SP_FileIcon)
-        elif mime_type.startswith("text/") or mime_type in ["application/msword", "application/vnd.openxmlformats-officedocument.wordprocessingml.document"]:
-            return QIcon.fromTheme("x-office-document") or QApplication.style().standardIcon(QStyle.SP_FileIcon)
-        else:
-            return QApplication.style().standardIcon(QStyle.SP_FileIcon)
-
+    # Public helpers --------------------------------------------------------- #
     def clear_list(self):
         self.list_widget.clear()
 
+    def add_file_item(self, file_id: int, filename: str, filetype: str):
+        item = QListWidgetItem()
+        item.setText(f"{filename} ({filetype})")
+        item.setData(Qt.UserRole, file_id)
+        item.setIcon(self._icon_for_type(filetype))
+        self.list_widget.addItem(item)
+
     def selected_file_id(self):
         item = self.list_widget.currentItem()
-        if item:
-            return item.data(Qt.UserRole)
-        return None
+        return item.data(Qt.UserRole) if item else None
 
-    def selected_file_name(self):
-        item = self.list_widget.currentItem()
-        if item:
-            return item.text()
-        return None
+    # Internal helpers ------------------------------------------------------- #
+    @staticmethod
+    def _icon_for_type(mime: str) -> QIcon:
+        style = QApplication.style()
+        if mime.startswith("image/"):
+            return QIcon.fromTheme("image-x-generic") or style.standardIcon(
+                QStyle.SP_FileIcon
+            )
+        if "pdf" in mime:
+            return QIcon.fromTheme("application-pdf") or style.standardIcon(
+                QStyle.SP_FileIcon
+            )
+        if "zip" in mime or "compressed" in mime:
+            return QIcon.fromTheme("package-x-generic") or style.standardIcon(
+                QStyle.SP_FileIcon
+            )
+        if mime.startswith("text/") or mime in (
+            "application/msword",
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        ):
+            return QIcon.fromTheme("x-office-document") or style.standardIcon(
+                QStyle.SP_FileIcon
+            )
+        return style.standardIcon(QStyle.SP_FileIcon)
 
 
+# --------------------------------------------------------------------------- #
+# Main window
+# --------------------------------------------------------------------------- #
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("Fileuploader")
         self.setMinimumSize(800, 600)
 
-        # Central widget and main layout
-        self.central_widget = QWidget()
-        self.setCentralWidget(self.central_widget)
-        self.layout = QGridLayout()
-        self.layout.setContentsMargins(24, 24, 24, 24)
-        self.layout.setSpacing(24)
-        self.central_widget.setLayout(self.layout)
-        self.central_widget.setStyleSheet("background-color: #ffffff;")
+        # Menu bar
+        self._create_menu()
 
-        # Initialize DB
+        # DB connection
         self.conn = sqlite3.connect(DB_NAME)
         self._init_db()
 
-        # Upload button
+        # Main layout
+        self._setup_ui()
+
+        # Init list
+        self.load_files()
+
+    # -------------------------- UI construction ---------------------------- #
+    def _setup_ui(self):
+        self.central_widget = QWidget(self)
+        self.setCentralWidget(self.central_widget)
+
+        grid = QGridLayout(self.central_widget)
+        grid.setContentsMargins(24, 24, 24, 24)
+        grid.setSpacing(24)
+
+        # Left column ------------------------------------------------------- #
+        left_vbox = QVBoxLayout()
         self.btn_upload = QPushButton("Dateien hochladen")
         self.btn_upload.setFixedHeight(48)
         self.btn_upload.setStyleSheet(self._button_style())
         self.btn_upload.setToolTip("Dateien auswählen")
 
-        # Download button
-        self.btn_download = QPushButton("Dateien herunterladen")
-        self.btn_download.setFixedHeight(48)
-        self.btn_download.setStyleSheet(self._button_style())
-        self.btn_download.setToolTip("Dateien auswählen")
+        self.btn_download_all = QPushButton("Dateien herunterladen")
+        self.btn_download_all.setFixedHeight(48)
+        self.btn_download_all.setStyleSheet(self._button_style())
+        self.btn_download_all.setToolTip("Dateien auswählen")
 
-        # Drag and drop widget
         self.drag_drop = DragDropWidget()
-        self.drag_drop.setToolTip("Dateien hier hinziehen")
         self.drag_drop.on_files_dropped = self.handle_files_upload
 
-        # File list widget (with add, delete, refresh)
-        self.file_widget = FileListWidget()
-
-        # Arrange layout: Left top buttons, drag drop below, right side file list
-        left_layout = QVBoxLayout()
-        left_layout.addWidget(self.btn_upload)
-        left_layout.addWidget(self.btn_download)
-        left_layout.addWidget(self.drag_drop)
-        left_layout.addStretch()
+        left_vbox.addWidget(self.btn_upload)
+        left_vbox.addWidget(self.btn_download_all)
+        left_vbox.addWidget(self.drag_drop)
+        left_vbox.addStretch()
 
         left_container = QWidget()
-        left_container.setLayout(left_layout)
+        left_container.setLayout(left_vbox)
 
-        self.layout.addWidget(left_container, 0, 0, 1, 1)
-        self.layout.addWidget(self.file_widget, 0, 1, 1, 1)
+        # Right column ------------------------------------------------------ #
+        self.file_widget = FileListWidget()
 
-        self.layout.setColumnStretch(0, 1)
-        self.layout.setColumnStretch(1, 2)
+        # Place widgets in grid
+        grid.addWidget(left_container, 0, 0)
+        grid.addWidget(self.file_widget, 0, 1)
+        grid.setColumnStretch(0, 1)
+        grid.setColumnStretch(1, 2)
 
-        # Event connections
+        # Signal connections
         self.btn_upload.clicked.connect(self.open_file_dialog)
-        self.btn_download.clicked.connect(self.download_selected_file)
+        self.btn_download_all.clicked.connect(self.download_selected_file)
+
+        # Re-use buttons from FileListWidget
         self.file_widget.btn_add.clicked.connect(self.open_file_dialog)
         self.file_widget.btn_delete.clicked.connect(self.delete_selected_file)
         self.file_widget.btn_download.clicked.connect(self.download_selected_file)
         self.file_widget.btn_refresh.clicked.connect(self.load_files)
 
-        # Load existing files initially
-        self.load_files()
+    # -------------------------- Menu bar ----------------------------------- #
+    def _create_menu(self):
+        menubar = self.menuBar()
 
-    def _button_style(self):
+        # Datei
+        file_menu = menubar.addMenu("&Datei")
+        act_open = QAction("Öffnen…", self, shortcut="Ctrl+O")
+        act_open.triggered.connect(self.open_file_dialog)
+        file_menu.addAction(act_open)
+
+        act_exit = QAction("Beenden", self, shortcut="Ctrl+Q")
+        act_exit.triggered.connect(self.close)
+        file_menu.addAction(act_exit)
+
+        # Bearbeiten
+        edit_menu = menubar.addMenu("&Bearbeiten")
+        edit_menu.addAction(QAction("Rückgängig", self, shortcut="Ctrl+Z"))
+        edit_menu.addAction(QAction("Wiederholen", self, shortcut="Ctrl+Y"))
+
+        # Hilfe
+        help_menu = menubar.addMenu("&Hilfe")
+        act_about = QAction("Über", self)
+        act_about.triggered.connect(self.show_about_dialog)
+        help_menu.addAction(act_about)
+
+    def show_about_dialog(self):
+        QMessageBox.about(
+            self,
+            "Über Fileuploader",
+            "Fileuploader v1.0\n\nEin einfacher Drag-&-Drop Datei-Uploader\n© 2024",
+        )
+
+    # -------------------------- Styling helper ---------------------------- #
+    @staticmethod
+    def _button_style() -> str:
         return """
             QPushButton {
                 background-color: #1f2937;
@@ -258,137 +319,137 @@ class MainWindow(QMainWindow):
                 font-weight: 600;
                 font-size: 16px;
                 padding: 12px 20px;
-                transition: background-color 0.3s ease;
             }
-            QPushButton:hover {
-                background-color: #4b5563;
-            }
-            QPushButton:pressed {
-                background-color: #111827;
-            }
+            QPushButton:hover { background-color: #4b5563; }
+            QPushButton:pressed { background-color: #111827; }
         """
 
+    # -------------------------- DB helpers -------------------------------- #
     def _init_db(self):
-        c = self.conn.cursor()
-        c.execute("""
-        CREATE TABLE IF NOT EXISTS files (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            filename TEXT NOT NULL,
-            filetype TEXT NOT NULL,
-            data BLOB NOT NULL
+        cur = self.conn.cursor()
+        cur.execute(
+            """
+            CREATE TABLE IF NOT EXISTS files(
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                filename TEXT NOT NULL,
+                filetype TEXT NOT NULL,
+                data BLOB NOT NULL
+            )
+        """
         )
-        """)
         self.conn.commit()
 
+    # -------------------------- File operations --------------------------- #
     def open_file_dialog(self):
-        options = QFileDialog.Options()
         files, _ = QFileDialog.getOpenFileNames(
             self,
             "Auswahl der Dateien",
             "",
-            "Alle unterstützten Dateien (*.png *.jpg *.jpeg *.bmp *.pdf *.doc *.docx *.zip);;Images (*.png *.jpg *.jpeg *.bmp);;PDF (*.pdf);;Documents (*.doc *.docx);;Zip archives (*.zip)",
-            options=options
+            "Alle unterstützten Dateien (*.png *.jpg *.jpeg *.bmp *.pdf *.doc *.docx *.zip);;"
+            "Images (*.png *.jpg *.jpeg *.bmp);;PDF (*.pdf);;Documents (*.doc *.docx);;Zip archives (*.zip)",
         )
         if files:
             self.handle_files_upload(files)
 
     def handle_files_upload(self, files):
-        # Filter allowed file types
-        allowed_extensions = ['.png', '.jpg', '.jpeg', '.bmp', '.pdf', '.doc', '.docx', '.zip']
-        valid_files = []
-        for f in files:
-            ext = os.path.splitext(f)[1].lower()
-            if ext in allowed_extensions:
-                valid_files.append(f)
+        allowed = {".png", ".jpg", ".jpeg", ".bmp", ".pdf", ".doc", ".docx", ".zip"}
+        valid = [f for f in files if os.path.splitext(f)[1].lower() in allowed]
 
-        if not valid_files:
-            QMessageBox.warning(self, "Unsupported Files", "No supported file types found.")
+        if not valid:
+            QMessageBox.warning(
+                self, "Unsupported Files", "No supported file types selected."
+            )
             return
 
-        cursor = self.conn.cursor()
-
-        for file_path in valid_files:
+        cur = self.conn.cursor()
+        for path in valid:
             try:
-                with open(file_path, 'rb') as file_data:
-                    data = file_data.read()
-                    filename = os.path.basename(file_path)
-                    mimetype, _ = mimetypes.guess_type(filename)
-                    if mimetype is None:
-                        # fallback for common docs
-                        ext = os.path.splitext(filename)[1].lower()
-                        if ext in ['.doc', '.docx']:
-                            mimetype = 'application/msword'
-                        else:
-                            mimetype = 'application/octet-stream'
-                    # Insert into DB
-                    cursor.execute("""
-                        INSERT INTO files (filename, filetype, data) VALUES (?, ?, ?)
-                    """, (filename, mimetype, data))
-            except Exception as e:
-                QMessageBox.warning(self, "Error", f"Failed to upload {file_path}.\nError:{str(e)}")
+                with open(path, "rb") as fh:
+                    data = fh.read()
+                filename = os.path.basename(path)
+                mime, _ = mimetypes.guess_type(filename)
+                if mime is None:
+                    ext = os.path.splitext(filename)[1].lower()
+                    mime = "application/msword" if ext in {".doc", ".docx"} else "application/octet-stream"
+
+                cur.execute(
+                    "INSERT INTO files(filename, filetype, data) VALUES(?,?,?)",
+                    (filename, mime, data),
+                )
+            except Exception as exc:
+                QMessageBox.warning(self, "Error", f"Failed to upload '{path}'.\n{exc}")
+
         self.conn.commit()
         self.load_files()
 
     def load_files(self):
         self.file_widget.clear_list()
-        cursor = self.conn.cursor()
-        cursor.execute("SELECT id, filename, filetype FROM files ORDER BY id DESC")
-        rows = cursor.fetchall()
-        for r in rows:
-            self.file_widget.add_file_item(r[0], r[1], r[2])
+        cur = self.conn.cursor()
+        for file_id, fname, ftype in cur.execute(
+            "SELECT id, filename, filetype FROM files ORDER BY id DESC"
+        ):
+            self.file_widget.add_file_item(file_id, fname, ftype)
 
     def delete_selected_file(self):
         file_id = self.file_widget.selected_file_id()
         if not file_id:
-            QMessageBox.information(self, "No Selection", "Please select a file to delete.")
+            QMessageBox.information(self, "Keine Auswahl", "Bitte Datei auswählen.")
             return
-
-        confirm = QMessageBox.question(
-            self,
-            "Löschen bestätigen",
-            "Wollen Sie die ausgewählte Datei wirklich löschen?",
-            QMessageBox.Yes | QMessageBox.No
-        )
-        if confirm == QMessageBox.Yes:
-            cursor = self.conn.cursor()
-            cursor.execute("DELETE FROM files WHERE id = ?", (file_id,))
+        if (
+            QMessageBox.question(
+                self,
+                "Löschen bestätigen",
+                "Wollen Sie die ausgewählte Datei wirklich löschen?",
+                QMessageBox.Yes | QMessageBox.No,
+            )
+            == QMessageBox.Yes
+        ):
+            cur = self.conn.cursor()
+            cur.execute("DELETE FROM files WHERE id=?", (file_id,))
             self.conn.commit()
             self.load_files()
 
     def download_selected_file(self):
         file_id = self.file_widget.selected_file_id()
         if not file_id:
-            QMessageBox.information(self, "Keine Auswahl!", "Bitte eine Datei auswählen, um sie herunterzuladen.")
+            QMessageBox.information(self, "Keine Auswahl", "Bitte Datei auswählen.")
             return
 
-        cursor = self.conn.cursor()
-        cursor.execute("SELECT filename, data FROM files WHERE id = ?", (file_id,))
-        result = cursor.fetchone()
-        if not result:
-            QMessageBox.warning(self, "Fehler", "Datei existiert nicht oder wurde gelöscht.")
+        cur = self.conn.cursor()
+        cur.execute("SELECT filename, data FROM files WHERE id=?", (file_id,))
+        row = cur.fetchone()
+        if not row:
+            QMessageBox.warning(self, "Fehler", "Datei existiert nicht.")
             return
 
-        filename, data = result
-        options = QFileDialog.Options()
+        filename, blob = row
         save_path, _ = QFileDialog.getSaveFileName(
-            self,
-            "Save File As",
-            filename,
-            "All Files (*)",
-            options=options
+            self, "Speichern unter …", filename, "All Files (*)"
         )
         if save_path:
             try:
-                with open(save_path, 'wb') as f:
-                    f.write(data)
-                QMessageBox.information(self, "Success", f"File saved to {save_path}")
-            except Exception as e:
-                QMessageBox.warning(self, "Error", f"Failed to save file.\nError: {str(e)}")
+                with open(save_path, "wb") as fh:
+                    fh.write(blob)
+                QMessageBox.information(self, "Erfolg", f"Datei gespeichert: {save_path}")
+            except Exception as exc:
+                QMessageBox.warning(self, "Error", f"Speichern fehlgeschlagen.\n{exc}")
 
+    # -------------------------- Lifecycle --------------------------------- #
     def closeEvent(self, event):
         self.conn.close()
-        event.accept()
+        super().closeEvent(event)
+
+
+# --------------------------------------------------------------------------- #
+# Application entry point
+# --------------------------------------------------------------------------- #
+def main():
+    app = QApplication(sys.argv)
+    app.setStyle("Fusion")
+    window = MainWindow()
+    window.show()
+    sys.exit(app.exec_())
+
 
 if __name__ == "__main__":
     main()
-
