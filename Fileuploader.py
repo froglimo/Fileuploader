@@ -2,6 +2,7 @@ import sys
 import os
 import sqlite3
 import mimetypes
+import shutil
 
 from PyQt5.QtWidgets import (
     QApplication,
@@ -211,12 +212,15 @@ class MainWindow(QMainWindow):
         super().__init__()
         self.setWindowTitle("Fileuploader")
         self.setMinimumSize(800, 600)
+        
+        # Current database path
+        self.current_db_path = DB_NAME
 
         # Menu bar
         self._create_menu()
 
         # DB connection
-        self.conn = sqlite3.connect(DB_NAME)
+        self.conn = sqlite3.connect(self.current_db_path)
         self._init_db()
 
         # Main layout
@@ -285,6 +289,23 @@ class MainWindow(QMainWindow):
         act_open = QAction("Öffnen…", self, shortcut="Ctrl+O")
         act_open.triggered.connect(self.open_file_dialog)
         file_menu.addAction(act_open)
+        
+        file_menu.addSeparator()
+        
+        # Database operations
+        act_db_location = QAction("Datenbank Speicherort ändern", self)
+        act_db_location.triggered.connect(self.change_database_location)
+        file_menu.addAction(act_db_location)
+        
+        act_db_export = QAction("Datenbank exportieren", self)
+        act_db_export.triggered.connect(self.database_download)
+        file_menu.addAction(act_db_export)
+        
+        act_db_import = QAction("Datenbank importieren", self)
+        act_db_import.triggered.connect(self.database_upload)
+        file_menu.addAction(act_db_import)
+        
+        file_menu.addSeparator()
 
         act_exit = QAction("Beenden", self, shortcut="Ctrl+Q")
         act_exit.triggered.connect(self.close)
@@ -433,6 +454,168 @@ class MainWindow(QMainWindow):
                 QMessageBox.information(self, "Erfolg", f"Datei gespeichert: {save_path}")
             except Exception as exc:
                 QMessageBox.warning(self, "Error", f"Speichern fehlgeschlagen.\n{exc}")
+
+    # -------------------------- Database operations ----------------------- #
+    def change_database_location(self):
+        """Change the location of the database file"""
+        new_path, _ = QFileDialog.getSaveFileName(
+            self,
+            "Neuen Datenbank-Speicherort wählen",
+            self.current_db_path,
+            "SQLite Database (*.db);;All Files (*)"
+        )
+        
+        if not new_path:
+            return
+            
+        try:
+            # Close current connection
+            self.conn.close()
+            
+            # Copy current database to new location if it exists
+            if os.path.exists(self.current_db_path):
+                shutil.copy2(self.current_db_path, new_path)
+            
+            # Update current path and reconnect
+            self.current_db_path = new_path
+            self.conn = sqlite3.connect(self.current_db_path)
+            self._init_db()
+            
+            # Refresh the file list
+            self.load_files()
+            
+            QMessageBox.information(
+                self,
+                "Erfolg",
+                f"Datenbank-Speicherort geändert zu:\n{new_path}"
+            )
+            
+        except Exception as exc:
+            QMessageBox.warning(
+                self,
+                "Fehler",
+                f"Fehler beim Ändern des Datenbank-Speicherorts:\n{exc}"
+            )
+            # Reconnect to original database
+            self.conn = sqlite3.connect(self.current_db_path)
+
+    def database_download(self):
+        """Export/download the current database to a chosen location"""
+        if not os.path.exists(self.current_db_path):
+            QMessageBox.warning(
+                self,
+                "Fehler",
+                "Keine Datenbank zum Exportieren gefunden."
+            )
+            return
+            
+        export_path, _ = QFileDialog.getSaveFileName(
+            self,
+            "Datenbank exportieren",
+            f"file_manager_backup_{os.path.basename(self.current_db_path)}",
+            "SQLite Database (*.db);;All Files (*)"
+        )
+        
+        if not export_path:
+            return
+            
+        try:
+            # Ensure all changes are committed before copying
+            self.conn.commit()
+            
+            # Copy the database file
+            shutil.copy2(self.current_db_path, export_path)
+            
+            QMessageBox.information(
+                self,
+                "Erfolg",
+                f"Datenbank erfolgreich exportiert nach:\n{export_path}"
+            )
+            
+        except Exception as exc:
+            QMessageBox.warning(
+                self,
+                "Fehler",
+                f"Fehler beim Exportieren der Datenbank:\n{exc}"
+            )
+
+    def database_upload(self):
+        """Import/upload a database from a chosen location"""
+        import_path, _ = QFileDialog.getOpenFileName(
+            self,
+            "Datenbank importieren",
+            "",
+            "SQLite Database (*.db);;All Files (*)"
+        )
+        
+        if not import_path:
+            return
+            
+        # Confirm the import operation
+        reply = QMessageBox.question(
+            self,
+            "Import bestätigen",
+            "Das Importieren einer Datenbank wird die aktuelle Datenbank ersetzen.\n"
+            "Möchten Sie fortfahren?",
+            QMessageBox.Yes | QMessageBox.No,
+            QMessageBox.No
+        )
+        
+        if reply != QMessageBox.Yes:
+            return
+            
+        try:
+            # Validate that the file is a valid SQLite database
+            test_conn = sqlite3.connect(import_path)
+            test_cursor = test_conn.cursor()
+            
+            # Check if it has the expected table structure
+            test_cursor.execute(
+                "SELECT name FROM sqlite_master WHERE type='table' AND name='files'"
+            )
+            if not test_cursor.fetchone():
+                test_conn.close()
+                QMessageBox.warning(
+                    self,
+                    "Ungültige Datenbank",
+                    "Die ausgewählte Datei scheint keine gültige Fileuploader-Datenbank zu sein."
+                )
+                return
+                
+            test_conn.close()
+            
+            # Close current connection
+            self.conn.close()
+            
+            # Replace current database with imported one
+            shutil.copy2(import_path, self.current_db_path)
+            
+            # Reconnect to the new database
+            self.conn = sqlite3.connect(self.current_db_path)
+            self._init_db()
+            
+            # Refresh the file list
+            self.load_files()
+            
+            QMessageBox.information(
+                self,
+                "Erfolg",
+                f"Datenbank erfolgreich importiert von:\n{import_path}"
+            )
+            
+        except Exception as exc:
+            QMessageBox.warning(
+                self,
+                "Fehler",
+                f"Fehler beim Importieren der Datenbank:\n{exc}"
+            )
+            # Try to reconnect to original database
+            try:
+                self.conn = sqlite3.connect(self.current_db_path)
+                self._init_db()
+                self.load_files()
+            except:
+                pass
 
     # -------------------------- Lifecycle --------------------------------- #
     def closeEvent(self, event):
