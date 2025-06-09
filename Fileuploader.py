@@ -29,13 +29,9 @@ DB_NAME = "file_manager.db"
 
 
 # --------------------------------------------------------------------------- #
-# Drag-and-drop frame
+# Drag-and-drop Bereich
 # --------------------------------------------------------------------------- #
 class DragDropWidget(QFrame):
-    """
-    Simple frame that accepts files via drag & drop.
-    The parent is expected to set self.on_files_dropped -> callable(list[str]).
-    """
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -43,7 +39,6 @@ class DragDropWidget(QFrame):
         self.setFixedHeight(150)
         self.on_files_dropped = None
 
-        # Styling
         self.setStyleSheet(
             """
             QFrame {
@@ -64,7 +59,7 @@ class DragDropWidget(QFrame):
         label.setAlignment(Qt.AlignCenter)
         self._layout.addWidget(label)
 
-    # Qt drag / drop handlers ------------------------------------------------ #
+    # Qt drag / drop Event manager ------------------------------------------------ #
     def dragEnterEvent(self, event: QDragEnterEvent):
         if event.mimeData().hasUrls():
             event.acceptProposedAction()
@@ -89,14 +84,7 @@ class DragDropWidget(QFrame):
             event.ignore()
 
 
-# --------------------------------------------------------------------------- #
-# File list (right pane)
-# --------------------------------------------------------------------------- #
 class FileListWidget(QWidget):
-    """
-    Shows database content plus toolbar buttons (add, delete, download, refresh).
-    """
-
     def __init__(self, parent=None):
         super().__init__(parent)
 
@@ -140,7 +128,6 @@ class FileListWidget(QWidget):
         )
         main_layout.addWidget(self.list_widget)
 
-        # Footer buttons
         btn_layout = QHBoxLayout()
         self.btn_add = QPushButton()
         self.btn_add.setIcon(self.style().standardIcon(QStyle.SP_DialogOpenButton))
@@ -163,7 +150,6 @@ class FileListWidget(QWidget):
         btn_layout.addStretch()
         main_layout.addLayout(btn_layout)
 
-    # Public helpers --------------------------------------------------------- #
     def clear_list(self):
         self.list_widget.clear()
 
@@ -367,7 +353,7 @@ class MainWindow(QMainWindow):
             "Auswahl der Dateien",
             "",
             "Alle unterstützten Dateien (*.png *.jpg *.jpeg *.bmp *.pdf *.doc *.docx *.zip);;"
-            "Images (*.png *.jpg *.jpeg *.bmp);;PDF (*.pdf);;Documents (*.doc *.docx);;Zip archives (*.zip)",
+            "Bilder (*.png *.jpg *.jpeg *.bmp);;PDF (*.pdf);;Dokumente (*.doc *.docx);;Zip Archive (*.zip)",
         )
         if files:
             self.handle_files_upload(files)
