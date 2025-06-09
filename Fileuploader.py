@@ -3,7 +3,7 @@ import os
 import sqlite3
 import mimetypes
 
-from PyQt5.QtWidgets import QApplication, QMainWindow, QPushButton, QFileDialog, QWidget, QVBoxLayout, QHBoxLayout, QListWidget, QListWidgetItem, QLabel, QMessageBox, QAbstractItemView, QStyle, QGridLayout, QFrame
+from PyQt5.QtWidgets import QFileIconProvider, QApplication, QMainWindow, QPushButton, QFileDialog, QWidget, QVBoxLayout, QHBoxLayout, QListWidget, QListWidgetItem, QLabel, QMessageBox, QAbstractItemView, QStyle, QGridLayout, QFrame
 from PyQt5.QtCore import Qt, QMimeData, QByteArray, QSize, QBuffer, QIODevice
 from PyQt5.QtGui import QDragEnterEvent, QDropEvent, QIcon, QPixmap
 
@@ -15,7 +15,6 @@ def main():
     sys.exit(app.exec_())
 
 DB_NAME = "file_manager.db"
-
 
 class DragDropWidget(QFrame):
     """
@@ -38,11 +37,16 @@ class DragDropWidget(QFrame):
             }
         """)
         self.layout = QVBoxLayout()
-        self.label = QLabel("Drag and drop files here")
+        self.label = QLabel("Dateien für Drag & Drop hier ablegen")
         self.label.setAlignment(Qt.AlignCenter)
         self.layout.addWidget(self.label)
         self.setLayout(self.layout)
-        self.on_files_dropped = None  # callback function
+        self.on_files_dropped = None
+        
+    def initUI(self):
+        self.setGeometry(100, 100, 600, 400)
+        self.setWindowTitle("Fileuploader Drag & Drop")
+        self.setWindowIcon(QIcon('icon1.png'))  # Set your own icon here
 
     def dragEnterEvent(self, event: QDragEnterEvent):
         if event.mimeData().hasUrls():
@@ -85,9 +89,9 @@ class FileListWidget(QWidget):
 
         self.btn_refresh = QPushButton()
         self.btn_refresh.setIcon(self.style().standardIcon(QStyle.SP_BrowserReload))
-        self.btn_refresh.setToolTip("Refresh file list")
+        self.btn_refresh.setToolTip("Dateiliste aktualisieren")
         self.btn_refresh.setFixedSize(32,32)
-        header_layout.addWidget(QLabel("Files in Database:"))
+        header_layout.addWidget(QLabel("Gespeicherte Dateien:"))
         header_layout.addStretch()
         header_layout.addWidget(self.btn_refresh)
         self.layout.addLayout(header_layout)
@@ -117,17 +121,17 @@ class FileListWidget(QWidget):
         btn_layout = QHBoxLayout()
         self.btn_add = QPushButton()
         self.btn_add.setIcon(self.style().standardIcon(QStyle.SP_DialogOpenButton))
-        self.btn_add.setToolTip("Add files")
+        self.btn_add.setToolTip("Dateien hinzufügen")
         self.btn_add.setFixedSize(36,36)
 
         self.btn_delete = QPushButton()
         self.btn_delete.setIcon(self.style().standardIcon(QStyle.SP_TrashIcon))
-        self.btn_delete.setToolTip("Delete selected file")
+        self.btn_delete.setToolTip("Ausgewählte Datei löschen")
         self.btn_delete.setFixedSize(36,36)
 
         self.btn_download = QPushButton()
         self.btn_download.setIcon(self.style().standardIcon(QStyle.SP_DialogSaveButton))
-        self.btn_download.setToolTip("Download selected file")
+        self.btn_download.setToolTip("Ausgewählte Datei herunterladen")
         self.btn_download.setFixedSize(36,36)
 
         btn_layout.addWidget(self.btn_add)
