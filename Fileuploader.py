@@ -27,12 +27,7 @@ class _CallableEvent(QEvent):
     def execute(self):
         self.fn()
 
-    def event(self, e):
-        if isinstance(e, _CallableEvent):
-            e.execute()
-            return True
-        return super().event(e)
-# Change to your server URL
+    # Change to your server URL
 # --------------------------------------------------------------------------- #
 # Drag-and-drop Bereich
 # --------------------------------------------------------------------------- #
@@ -221,11 +216,8 @@ class MainWindow(QMainWindow):
         super().__init__()
         self.setWindowTitle("Fileuploader")
         self.setMinimumSize(800, 600)
-        self.drag_drop.on_files_dropped = lambda files: (
-            self.handle_files_upload(files),
-            Thread(target=self.upload_to_server, args=(files,), daemon=True).start()
-        )
         # Current database path
+        # Drag-and-drop handler set up in UI initialization
         self.current_db_path = DB_NAME
 
         # Menu bar
@@ -302,7 +294,10 @@ class MainWindow(QMainWindow):
         self.btn_download_all.setToolTip("Dateien auswählen")
 
         self.drag_drop = DragDropWidget()
-        self.drag_drop.on_files_dropped = self.handle_files_upload & self.uploadtoserver
+        self.drag_drop.on_files_dropped = lambda files: (
+            self.handle_files_upload(files),
+            Thread(target=self.upload_to_server, args=(files,), daemon=True).start()
+        )
 
         left_vbox.addWidget(self.btn_upload)
         left_vbox.addWidget(self.btn_download_all)
@@ -672,6 +667,12 @@ class MainWindow(QMainWindow):
     def closeEvent(self, event):
         self.conn.close()
         super().closeEvent(event)
+
+    def event(self, e):
+        if isinstance(e, _CallableEvent):
+            e.execute()
+            return True
+        return super().event(e)
 
 
 # --------------------------------------------------------------------------- #
