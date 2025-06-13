@@ -1,42 +1,49 @@
-# server.py
-from flask import Flask, request, redirect, send_from_directory, render_template
 import os
+from flask import Flask, request, render_template, jsonify
+from werkzeug.utils import secure_filename
 
 app = Flask(__name__)
 
-# Speicherort für hochgeladene Dateien
-UPLOAD_FOLDER = 'uploads'
-if not os.path.exists(UPLOAD_FOLDER):
-    os.makedirs(UPLOAD_FOLDER)
+# Where to store uploaded files (will recreate folder structure)
+UPLOAD_FOLDER = os.path.join(os.path.dirname(__file__), "uploaded_folders")
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
 
-app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+@app.route("/")
+def index():
+    return "Welcome—use /upload_folder to upload a folder."
 
-# Route zum Hochladen von Dateien
-@app.route('/upload', methods=['GET', 'POST'])
-def upload_file():
-    if request.method == 'POST':
-        # Prüfen, ob eine Datei hochgeladen wurde
-        if 'file' not in request.files:
-            return 'Keine Datei ausgewählt'
-        file = request.files['file']
-        if file.filename == '':
-            return 'Keine Datei ausgewählt'
-        if file:
-            # Datei speichern
-            file.save(os.path.join(app.config['UPLOAD_FOLDER'], file.filename))
-            return f"Datei {file.filename} hochgeladen!"
-    return '''
-    <h1>Datei hochladen</h1>
-    <form method="post" enctype="multipart/form-data">
-      <input type="file" name="file">
-      <input type="submit" value="Hochladen">
-    </form>
-    '''
+@app.route("/upload_folder", methods=["GET"])
+def upload_folder_form():
+    # Renders the HTML form with webkitdirectory
+    return render_template("upload_folder.html")
 
-# Route zum Herunterladen von Dateien
-@app.route('/download/<filename>')
-def download_file(filename):
-    return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
+@app.route("/upload_folder", methods=["POST"])
+def handle_folder_upload():
+    """
+    Receives all files from the directory picker.
+    Reconstructs relative paths and saves under UPLOAD_FOLDER.
+    """
+    files = request.files.getlist("files")
+    if not files:
+        return jsonify({"success": False, "message": "No files received"}), 400
 
-if __name__ == '__main__':
-    app.run(debug=True)
+    saved = []
+    for f in files:
+        # f.filename may contain subfolders, e.g. "photos/vacation/img1.jpg"
+        rel_path = secure_filename(f.filename)
+        dest_path = os.path.join(app.config["UPLOAD_FOLDER"], rel_path)
+        dest_dir = os.path.dirname(dest_path)
+        os.makedirs(dest_dir, exist_ok=True)
+        f.save(dest_path)
+        saved.append(rel_path)
+
+    return jsonify({
+        "success": True,
+        "files_saved": saved,
+        "upload_folder": app.config["UPLOAD_FOLDER"]
+    })
+
+if __name__ == "__main__":
+    # debug=True for dev only
+    app.run(host="0.0.0.0", port=5000, debug=True)

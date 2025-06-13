@@ -3,31 +3,36 @@ import os
 import sqlite3
 import mimetypes
 import shutil
+import requests
+from threading import Thread
 
+import flask  # still available if you want to spin up the server in‐process
 from PyQt5.QtWidgets import (
-    QApplication,
-    QMainWindow,
-    QWidget,
-    QVBoxLayout,
-    QHBoxLayout,
-    QGridLayout,
-    QFrame,
-    QPushButton,
-    QFileDialog,
-    QListWidget,
-    QListWidgetItem,
-    QLabel,
-    QMessageBox,
-    QAbstractItemView,
-    QStyle,
+    QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
+    QGridLayout, QFrame, QPushButton, QFileDialog, QListWidget,
+    QListWidgetItem, QLabel, QMessageBox, QAbstractItemView, QStyle,
     QAction,
 )
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QDragEnterEvent, QDropEvent, QIcon
 
 DB_NAME = "file_manager.db"
+UPLOAD_ENDPOINT = "http://localhost:5001/upload"
 
+from PyQt5.QtCore import QEvent
+class _CallableEvent(QEvent):
+    def __init__(self, fn):
+        super().__init__(QEvent.User)
+        self.fn = fn
+    def execute(self):
+        self.fn()
 
+    def event(self, e):
+        if isinstance(e, _CallableEvent):
+            e.execute()
+            return True
+        return super().event(e)
+# Change to your server URL
 # --------------------------------------------------------------------------- #
 # Drag-and-drop Bereich
 # --------------------------------------------------------------------------- #
@@ -189,7 +194,25 @@ class FileListWidget(QWidget):
             )
         return style.standardIcon(QStyle.SP_FileIcon)
 
-
+class ButtonUploadtoServer(QPushButton):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setText("Upload to Server")
+        self.setFixedHeight(48)
+        self.setStyleSheet(
+            """
+            QPushButton {
+                background-color: #1f2937;
+                color: white;
+                border-radius: 12px;
+                font-weight: 600;
+                font-size: 16px;
+                padding: 12px 20px;
+            }
+            QPushButton:hover { background-color: #4b5563; }
+            QPushButton:pressed { background-color: #111827; }
+        """
+        )
 # --------------------------------------------------------------------------- #
 # Main window
 # --------------------------------------------------------------------------- #
@@ -198,7 +221,10 @@ class MainWindow(QMainWindow):
         super().__init__()
         self.setWindowTitle("Fileuploader")
         self.setMinimumSize(800, 600)
-        
+        self.drag_drop.on_files_dropped = lambda files: (
+            self.handle_files_upload(files),
+            Thread(target=self.upload_to_server, args=(files,), daemon=True).start()
+        )
         # Current database path
         self.current_db_path = DB_NAME
 
@@ -214,7 +240,46 @@ class MainWindow(QMainWindow):
 
         # Init list
         self.load_files()
+    def upload_to_server(self, files):
+        """
+        POST each file to a remote HTTP endpoint.
+        Runs in a background thread to avoid blocking UI.
+        """
+        successes = 0
+        for path in files:
+            if not os.path.isfile(path):
+                continue
+            mime, _ = mimetypes.guess_type(path)
+            mime = mime or "application/octet-stream"
+            with open(path, "rb") as fh:
+                files_payload = {
+                    "file": (os.path.basename(path), fh, mime)
+                }
+                try:
+                    resp = requests.post(UPLOAD_ENDPOINT, files=files_payload)
+                    resp.raise_for_status()
+                    successes += 1
+                except requests.RequestException as exc:
+                    # report per-file failures on the GUI thread
+                    self.run_on_ui_thread(
+                        lambda: QMessageBox.warning(
+                            self, "Upload Failed",
+                            f"Failed to upload '{path}' to server:\n{exc}"
+                        )
+                    )
+        if successes:
+            self.run_on_ui_thread(
+                lambda: QMessageBox.information(
+                    self, "Upload Complete",
+                    f"Successfully uploaded {successes} file(s) to server."
+                )
+            )
 
+    def run_on_ui_thread(self, fn):
+        """
+        Helper to marshal a callback back to the Qt event loop.
+        """
+        QApplication.instance().postEvent(self, _CallableEvent(fn))
     # -------------------------- UI construction ---------------------------- #
     def _setup_ui(self):
         self.central_widget = QWidget(self)
@@ -237,7 +302,7 @@ class MainWindow(QMainWindow):
         self.btn_download_all.setToolTip("Dateien auswählen")
 
         self.drag_drop = DragDropWidget()
-        self.drag_drop.on_files_dropped = self.handle_files_upload
+        self.drag_drop.on_files_dropped = self.handle_files_upload & self.uploadtoserver
 
         left_vbox.addWidget(self.btn_upload)
         left_vbox.addWidget(self.btn_download_all)
@@ -357,7 +422,7 @@ class MainWindow(QMainWindow):
         )
         if files:
             self.handle_files_upload(files)
-
+    
     def handle_files_upload(self, files):
         allowed = {".png", ".jpg", ".jpeg", ".bmp", ".pdf", ".doc", ".docx", ".zip"}
         valid = [f for f in files if os.path.splitext(f)[1].lower() in allowed]
