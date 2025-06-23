@@ -412,7 +412,7 @@ class MainWindow(QMainWindow):
             self,
             "Auswahl der Dateien",
             "",
-            "Alle unterstützten Dateien (*.png *.jpg *.jpeg *.bmp *.pdf *.doc *.docx *.zip *.7z *.txt *.heic *.webp);;",
+            "Alle unterstützten Dateien (*.webp *.avif *.png *.heic *.jpg *.jpeg *.bmp *.pdf *.doc *.docx *.odt *.odp *.txt *.zip *.7z);;",
             "Bilder (*.webp *.avif *.png *.heic *.jpg *.jpeg *.bmp);;PDF (*.pdf);;Dokumente (*.doc *.docx *.odt *.odp *.txt);;Zip Archive (*.zip *.7z);;",
         )
         if files:
