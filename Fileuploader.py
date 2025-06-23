@@ -412,14 +412,14 @@ class MainWindow(QMainWindow):
             self,
             "Auswahl der Dateien",
             "",
-            "Alle unterstützten Dateien (*.png *.jpg *.jpeg *.bmp *.pdf *.doc *.docx *.zip);;",
+            "Alle unterstützten Dateien (*.png *.jpg *.jpeg *.bmp *.pdf *.doc *.docx *.zip *.7z *.txt *.heic *.webp);;",
             "Bilder (*.webp *.avif *.png *.heic *.jpg *.jpeg *.bmp);;PDF (*.pdf);;Dokumente (*.doc *.docx *.odt *.odp *.txt);;Zip Archive (*.zip *.7z);;",
         )
         if files:
             self.handle_files_upload(files)
     
     def handle_files_upload(self, files):
-        allowed = {".png", ".jpg", ".jpeg", ".bmp", ".pdf", ".doc", ".docx", ".zip"}
+        allowed = {".doc", ".docx", ".odt", ".odp", ".txt", ".pdf", ".zip", ".7z", ".png", ".jpg", ".jpeg", ".bmp", ".heic", ".webp", "*.avif"}
         valid = [f for f in files if os.path.splitext(f)[1].lower() in allowed]
 
         if not valid:
