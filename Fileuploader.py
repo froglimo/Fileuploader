@@ -256,7 +256,7 @@ class MainWindow(QMainWindow):
                     self.run_on_ui_thread(
                         lambda: QMessageBox.warning(
                             self, "Upload Failed",
-                            f"Failed to upload '{path}' to server:\n{exc}"
+                            f"Failed to upload '{path}' to server:\n{exec}"
                         )
                     )
         if successes:
@@ -412,8 +412,8 @@ class MainWindow(QMainWindow):
             self,
             "Auswahl der Dateien",
             "",
-            "Alle unterstützten Dateien (*.png *.jpg *.jpeg *.bmp *.pdf *.doc *.docx *.zip);;"
-            "Bilder (*.png *.jpg *.jpeg *.bmp);;PDF (*.pdf);;Dokumente (*.doc *.docx);;Zip Archive (*.zip)",
+            "Alle unterstützten Dateien (*.png *.jpg *.jpeg *.bmp *.pdf *.doc *.docx *.zip);;",
+            "Bilder (*.webp *.avif *.png *.heic *.jpg *.jpeg *.bmp);;PDF (*.pdf);;Dokumente (*.doc *.docx *.odt *.odp *.txt);;Zip Archive (*.zip *.7z);;",
         )
         if files:
             self.handle_files_upload(files)
@@ -653,7 +653,7 @@ class MainWindow(QMainWindow):
             QMessageBox.warning(
                 self,
                 "Fehler",
-                f"Fehler beim Importieren der Datenbank:\n{exc}"
+                f"Fehler beim Importieren der Datenbank:\n{exec}"
             )
             # Try to reconnect to original database
             try:
