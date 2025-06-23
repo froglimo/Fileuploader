@@ -410,10 +410,13 @@ class MainWindow(QMainWindow):
     def open_file_dialog(self):
         files, _ = QFileDialog.getOpenFileNames(
             self,
-            "Auswahl der Dateien",
-            "",
-            "Alle unterstützten Dateien (*.webp *.avif *.png *.heic *.jpg *.jpeg *.bmp *.pdf *.doc *.docx *.odt *.odp *.txt *.zip *.7z);;",
-            "Bilder (*.webp *.avif *.png *.heic *.jpg *.jpeg *.bmp);;PDF (*.pdf);;Dokumente (*.doc *.docx *.odt *.odp *.txt);;Zip Archive (*.zip *.7z);;",
+            "Auswahl der Dateien",           # caption
+            "",                              # start directory
+            "Alle unterstützten Dateien (*.webp *.avif *.png *.heic *.jpg *.jpeg *.bmp *.pdf *.doc *.docx *.odt *.odp *.txt *.zip *.7z);;"
+            "Bilder (*.webp *.avif *.png *.heic *.jpg *.jpeg *.bmp);;"
+            "PDF (*.pdf);;"
+            "Dokumente (*.doc *.docx *.odt *.odp *.txt);;"
+            "Zip Archive (*.zip *.7z)"       # filter string
         )
         if files:
             self.handle_files_upload(files)
