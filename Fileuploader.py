@@ -15,6 +15,7 @@ from PyQt5.QtWidgets import (
 )
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QDragEnterEvent, QDropEvent, QIcon
+from PyQt5.QtGui import QIcon
 
 DB_NAME = "file_manager.db"
 UPLOAD_ENDPOINT = "http://localhost:5001/upload"
@@ -215,6 +216,7 @@ class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("Fileuploader")
+        self.setWindowIcon(QIcon(os.path.join(os.path.dirname(__file__), "icon1.png")))
         self.setMinimumSize(800, 600)
         # Current database path
         # Drag-and-drop handler set up in UI initialization
@@ -684,6 +686,7 @@ class MainWindow(QMainWindow):
 def main():
     app = QApplication(sys.argv)
     app.setStyle("Fusion")
+    app.setWindowIcon(QIcon(os.path.join(os.path.dirname(__file__), "icon1.png")))  # <-- Add this line
     window = MainWindow()
     window.show()
     sys.exit(app.exec_())
