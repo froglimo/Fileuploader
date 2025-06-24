@@ -341,24 +341,17 @@ class MainWindow(QMainWindow):
         act_open = QAction("Öffnen…", self, shortcut="Ctrl+O")
         act_open.triggered.connect(self.open_file_dialog)
         file_menu.addAction(act_open)
-        
         file_menu.addSeparator()
-        
-        # Database operations
         act_db_location = QAction("Datenbank Speicherort ändern", self)
         act_db_location.triggered.connect(self.change_database_location)
         file_menu.addAction(act_db_location)
-        
         act_db_export = QAction("Datenbank exportieren", self)
         act_db_export.triggered.connect(self.database_download)
         file_menu.addAction(act_db_export)
-        
         act_db_import = QAction("Datenbank importieren", self)
         act_db_import.triggered.connect(self.database_upload)
         file_menu.addAction(act_db_import)
-        
         file_menu.addSeparator()
-
         act_exit = QAction("Beenden", self, shortcut="Ctrl+Q")
         act_exit.triggered.connect(self.close)
         file_menu.addAction(act_exit)
@@ -368,15 +361,21 @@ class MainWindow(QMainWindow):
         edit_menu.addAction(QAction("Rückgängig", self, shortcut="Ctrl+Z"))
         edit_menu.addAction(QAction("Wiederholen", self, shortcut="Ctrl+Y"))
         act_edit_menu = QAction("Einstellungen", self, shortcut="Ctrl+I")
-        act_edit_menu.triggered.connect(lambda: Settings_Window(self).show())
+        act_edit_menu.triggered.connect(self.show_settings_window)
         edit_menu.addAction(act_edit_menu)
-        # Ansicht
 
         # Hilfe
         help_menu = menubar.addMenu("&Hilfe")
         act_about = QAction("Über", self)
         act_about.triggered.connect(self.show_about_dialog)
         help_menu.addAction(act_about)
+
+    def show_settings_window(self):
+        if self.settings_window is None or not self.settings_window.isVisible():
+            self.settings_window = Settings_Window(self)
+        self.settings_window.show()
+        self.settings_window.raise_()
+        self.settings_window.activateWindow()
 
     def show_about_dialog(self):
         QMessageBox.about(
