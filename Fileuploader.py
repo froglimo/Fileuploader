@@ -363,6 +363,7 @@ class MainWindow(QMainWindow):
         edit_menu = menubar.addMenu("&Bearbeiten")
         edit_menu.addAction(QAction("Rückgängig", self, shortcut="Ctrl+Z"))
         edit_menu.addAction(QAction("Wiederholen", self, shortcut="Ctrl+Y"))
+        edit_menu.addAction(QAction("Einstellungen", self, shortcut="Ctrl+I"))
 
         # Hilfe
         help_menu = menubar.addMenu("&Hilfe")
