@@ -84,7 +84,11 @@ class DragDropWidget(QFrame):
         else:
             event.ignore()
 
-
+class Settings_Window(QWidget):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle("Einstellungen")
+        self.setMinimumSize(600, 500)
 class FileListWidget(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
