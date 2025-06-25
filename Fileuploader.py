@@ -17,6 +17,12 @@ from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QDragEnterEvent, QDropEvent, QIcon
 from PyQt5.QtGui import QIcon
 
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+PACKAGES_DIR = os.path.join(BASE_DIR, "packages")
+if PACKAGES_DIR not in sys.path:
+    sys.path.insert(0, PACKAGES_DIR)
+
+
 DB_NAME = "file_manager.db"
 UPLOAD_ENDPOINT = "http://localhost:5001/upload"
 
