@@ -371,11 +371,13 @@ class MainWindow(QMainWindow):
         help_menu.addAction(act_about)
 
     def show_settings_window(self):
-        if self.show_settings_window is None or not self.show_settings_window.isVisible():
+        if self.show_settings_window is None or not self.show_settings_window():
             self.show_settings_window = Settings_Window(self)
-        self.show_settings_window.show()
-        self.show_settings_window.raise_()
-        self.show_settings_window.activateWindow()
+            self.show_settings_window.show()
+            self.show_settings_window.raise_()
+            self.show_settings_window.activateWindow()
+        else:
+            self.run_on_ui_thread()
 
     def show_about_dialog(self):
         QMessageBox.about(
