@@ -83,12 +83,6 @@ class DragDropWidget(QFrame):
             event.acceptProposedAction()
         else:
             event.ignore()
-
-class Settings_Window(QWidget):
-    def __init__(self, parent=None):
-        super().__init__(parent)
-        self.setWindowTitle("Einstellungen")
-        self.setMinimumSize(600, 500)
 class FileListWidget(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -238,6 +232,17 @@ class MainWindow(QMainWindow):
 
         # Init list
         self.load_files()
+    
+    def show_settings_window(self):
+        # If the settings window does not exist or has been closed, create a new one
+        if self.settings_window_instance is None or not self.settings_window_instance.isVisible():
+            self.settings_window_instance = self.settings_window()
+            self.settings_window_instance.show()
+            self.settings_window_instance.raise_()
+            self.settings_window_instance.activateWindow()
+        else:
+            self.settings_window_instance.raise_()
+            self.settings_window_instance.activateWindow()
     def upload_to_server(self, files):
         """
         POST each file to a remote HTTP endpoint.
@@ -368,24 +373,24 @@ class MainWindow(QMainWindow):
         help_menu = menubar.addMenu("&Hilfe")
         act_about = QAction("Über", self)
         act_about.triggered.connect(self.show_about_dialog)
-        help_menu.addAction(act_about)
-
-    def show_settings_window(self):
-        if self.show_settings_window is None or not self.show_settings_window():
-            self.show_settings_window = Settings_Window(self)
-            self.show_settings_window.show()
-            self.show_settings_window.raise_()
-            self.show_settings_window.activateWindow()
-        else:
-            self.run_on_ui_thread()
+        help_menu.addAction(act_about)     
+   
 
     def show_about_dialog(self):
         QMessageBox.about(
             self,
             "Über Fileuploader",
-            "Fileuploader v1.0\n\nEin einfacher Drag-&-Drop Datei-Uploader\n© 2024",
+            "Fileuploader v1.0\n\nEin einfacher Drag-&-Drop Datei-Uploader\n© Release 25.06.2024",
+            "Mit Liebe gecodet durch Max Krebs\n\n"
         )
-
+    class settings_window(QWidget):
+        def __init__(self, parent=None):
+            super().__init__(parent)
+            self.setWindowTitle("Einstellungen")
+            self.setMinimumSize(600, 500)
+            layout = QVBoxLayout(self)
+            layout.addWidget(QLabel("Hier können Sie Ihre Einstellungen vornehmen."))
+            self.setLayout(layout)
     # -------------------------- Styling helper ---------------------------- #
     @staticmethod
     def _button_style() -> str:
