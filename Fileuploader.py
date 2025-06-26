@@ -1,5 +1,12 @@
-import sys
 import os
+import sys
+
+# Ensure 'packages' folder in project root is importable
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+PACKAGES_DIR = os.path.join(BASE_DIR, "packages")
+if PACKAGES_DIR not in sys.path:
+    sys.path.insert(0, PACKAGES_DIR)
+
 import sqlite3
 import mimetypes
 import shutil
@@ -16,12 +23,6 @@ from PyQt5.QtWidgets import (
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QDragEnterEvent, QDropEvent, QIcon
 from PyQt5.QtGui import QIcon
-
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-PACKAGES_DIR = os.path.join(BASE_DIR, "packages")
-if PACKAGES_DIR not in sys.path:
-    sys.path.insert(0, PACKAGES_DIR)
-
 
 DB_NAME = "file_manager.db"
 UPLOAD_ENDPOINT = "http://localhost:5001/upload"
@@ -378,16 +379,23 @@ class MainWindow(QMainWindow):
         # Hilfe
         help_menu = menubar.addMenu("&Hilfe")
         act_about = QAction("Über", self)
+        act_autor = QAction("Autor", self)
+        act_autor.triggered.connect(self.show_autor)
         act_about.triggered.connect(self.show_about_dialog)
-        help_menu.addAction(act_about)     
+        help_menu.addAction(act_about, act_autor)     
    
+    def show_autor(self):
+        QMessageBox.information(
+            self,
+            "Autor",
+            "Max Krebs\n\nE-Mail: max.krebs@example.com",
+        )
 
     def show_about_dialog(self):
         QMessageBox.about(
             self,
             "Über Fileuploader",
-            "Fileuploader v1.0\n\nEin einfacher Drag-&-Drop Datei-Uploader\n© Release 25.06.2024",
-            "Mit Liebe gecodet durch Max Krebs\n\n"
+            "Fileuploader v1.0\n\nEin einfacher Drag-&-Drop Datei-Uploader\n© Release 25.06.2024 \n\nMit Liebe gecodet durch Max Krebs\n",
         )
     class settings_window(QWidget):
         def __init__(self, parent=None):
