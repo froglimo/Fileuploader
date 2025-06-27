@@ -398,7 +398,8 @@ class MainWindow(QMainWindow):
         act_autor = QAction("Autor", self)
         act_autor.triggered.connect(self.show_autor)
         act_about.triggered.connect(self.show_about_dialog)
-        help_menu.addAction(act_about, act_autor)     
+        help_menu.addAction(act_about)   
+        help_menu.addAction(act_autor)  
    
     def show_autor(self):
         QMessageBox.information(
