@@ -36,6 +36,22 @@ class _CallableEvent(QEvent):
         self.fn()
 
     # Change to your server URL
+class AutorWindow(QWidget):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle("Autor")
+        self.setMinimumSize(400, 250)
+        layout = QVBoxLayout(self)
+        label = QLabel(
+            "<h2>Max Krebs</h2>"
+            "<p><b>E-Mail:</b> max.krebs@example.com</p>"
+            "<p>© Release 25.06.2024</p>"
+            "<p>Mit Liebe gecodet durch Max Krebs</p>"
+        )
+        label.setAlignment(Qt.AlignCenter)
+        layout.addWidget(label)
+        self.setLayout(layout)
+
 # --------------------------------------------------------------------------- #
 # Drag-and-drop Bereich
 # --------------------------------------------------------------------------- #
