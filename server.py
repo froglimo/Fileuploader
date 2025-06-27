@@ -150,17 +150,12 @@ def download_folder_zip():
                 rel_path = os.path.relpath(abs_file, app.config["UPLOAD_FOLDER"])
                 zipf.write(abs_file, rel_path)
     zip_buffer.seek(0)
-    return send_from_directory(
-        directory=os.path.dirname(abs_folder),
-        path=os.path.basename(abs_folder) + ".zip",
-        as_attachment=True,
-        mimetype="application/zip"
-    ) if False else (
-        # Fallback: send the in-memory zip
-        app.response_class(zip_buffer.getvalue(), mimetype="application/zip", headers={
+    return app.response_class(
+        zip_buffer.getvalue(),
+        mimetype="application/zip",
+        headers={
             "Content-Disposition": f"attachment; filename={os.path.basename(abs_folder)}.zip"
-        })
+        }
     )
 
-if __name__ == "__main__":
-    app.run(host="127.0.0.1", port=5001)
+# No app.run() block here; use a WSGI server to run this app.
