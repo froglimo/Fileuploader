@@ -11,7 +11,10 @@ app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
 
 @app.route("/")
 def index():
-    return "Welcome—use /upload_folder to upload a folder."
+    return """Upload-Button: <a href='/upload_folder'>Upload Folder</a>
+            <br>Upload Folder with webkitdirectory: <a href='/upload_folder_webkit'>Upload Folder with webkitdirectory</a><br>
+            Download-Folder: <a href='/download_folder'>Download Folder</a>
+            <br>Download Folder with webkitdirectory: <a href='/download_folder_webkit'>Download Folder with webkitdirectory</a>"""
 
 @app.route("/upload_folder", methods=["GET"])
 def upload_folder_form():
