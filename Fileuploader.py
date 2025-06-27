@@ -405,7 +405,7 @@ class MainWindow(QMainWindow):
         QMessageBox.information(
             self,
             "Autor",
-            "Max Krebs\n\nE-Mail: max.krebs@example.com",
+            "Max Krebs\n\nE-Mail: max.krebs@posteo.de\n\n© Release 25.06.2024\n\nMit Liebe gecodet durch Max Krebs",
         )
 
     def show_about_dialog(self):
