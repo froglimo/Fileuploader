@@ -24,6 +24,16 @@ from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QDragEnterEvent, QDropEvent, QIcon
 from PyQt5.QtGui import QIcon
 
+import threading
+
+def run_server():
+    import server  # Make sure server.py is in the same directory or in your PYTHONPATH
+    server.app.run(port=5001, use_reloader=False)  # use_reloader=False is important for threads
+
+# Start the server in a background thread
+server_thread = threading.Thread(target=run_server, daemon=True)
+server_thread.start()
+
 DB_NAME = "file_manager.db"
 UPLOAD_ENDPOINT = "http://localhost:5001/upload"
 
