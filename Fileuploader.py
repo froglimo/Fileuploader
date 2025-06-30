@@ -432,11 +432,12 @@ class MainWindow(QMainWindow):
         help_menu.addAction(act_autor)  
    
     def show_autor(self):
-        QMessageBox.information(
-            self,
-            "Autor",
-            "Max Krebs\n\nE-Mail: max.krebs@posteo.de\n\n© Release 25.06.2024\n\nMit Liebe gecodet durch Max Krebs",
-        )
+        # Show the AutorWindow with the image and author info
+        if not hasattr(self, '_autor_window') or self._autor_window is None:
+            self._autor_window = AutorWindow(self)
+        self._autor_window.show()
+        self._autor_window.raise_()
+        self._autor_window.activateWindow()
 
     def show_about_dialog(self):
         QMessageBox.about(
