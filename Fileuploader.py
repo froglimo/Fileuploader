@@ -50,8 +50,28 @@ class AutorWindow(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setWindowTitle("Autor")
-        self.setMinimumSize(400, 250)
+        self.setMinimumSize(400, 350)
         layout = QVBoxLayout(self)
+
+        # Add online landscape image
+        image_url = "https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=400&q=80"  # Unsplash landscape
+        image_label = QLabel()
+        image_label.setAlignment(Qt.AlignCenter)
+        try:
+            import requests
+            from PyQt5.QtGui import QPixmap
+            response = requests.get(image_url)
+            if response.status_code == 200:
+                pixmap = QPixmap()
+                pixmap.loadFromData(response.content)
+                pixmap = pixmap.scaledToWidth(320, Qt.SmoothTransformation)
+                image_label.setPixmap(pixmap)
+            else:
+                image_label.setText("[Bild konnte nicht geladen werden]")
+        except Exception:
+            image_label.setText("[Bild konnte nicht geladen werden]")
+        layout.addWidget(image_label)
+
         label = QLabel(
             "<h2>Max Krebs</h2>"
             "<p><b>E-Mail:</b> max.krebs@example.com</p>"
