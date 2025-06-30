@@ -12,17 +12,18 @@ import mimetypes
 import shutil
 import requests
 from threading import Thread
+from PyQt5.QtWidgets import QMenuBar, QApplication
 
-import flask  # still available if you want to spin up the server in‐process
+# import flask  # still available if you want to spin up the server in‐process
 from PyQt5.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
     QGridLayout, QFrame, QPushButton, QFileDialog, QListWidget,
     QListWidgetItem, QLabel, QMessageBox, QAbstractItemView, QStyle,
     QAction,
 )
-from PyQt5.QtCore import Qt
-from PyQt5.QtGui import QDragEnterEvent, QDropEvent, QIcon
-from PyQt5.QtGui import QIcon
+from PyQt5.QtCore import Qt, QEvent
+from PyQt5.QtGui import QDragEnterEvent, QDropEvent, QIcon, QPixmap
+from PyQt5.QtWidgets import QStyle
 
 import threading
 
@@ -37,10 +38,9 @@ server_thread.start()
 DB_NAME = "file_manager.db"
 UPLOAD_ENDPOINT = "http://localhost:5001/upload"
 
-from PyQt5.QtCore import QEvent
 class _CallableEvent(QEvent):
     def __init__(self, fn):
-        super().__init__(QEvent.User)
+        super().__init__(QEvent.Type.User)
         self.fn = fn
     def execute(self):
         self.fn()
@@ -52,33 +52,30 @@ class AutorWindow(QWidget):
         self.setWindowTitle("Autor")
         self.setMinimumSize(400, 350)
         layout = QVBoxLayout(self)
-
         # Add online landscape image
-        image_url = "https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=400&q=80"  # Unsplash landscape
+        image_url = "https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=400&q=80"
         image_label = QLabel()
-        image_label.setAlignment(Qt.AlignCenter)
+        image_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         try:
-            import requests
             from PyQt5.QtGui import QPixmap
             response = requests.get(image_url)
             if response.status_code == 200:
                 pixmap = QPixmap()
                 pixmap.loadFromData(response.content)
-                pixmap = pixmap.scaledToWidth(320, Qt.SmoothTransformation)
+                pixmap = pixmap.scaledToWidth(320, Qt.TransformationMode.SmoothTransformation)
                 image_label.setPixmap(pixmap)
             else:
                 image_label.setText("[Bild konnte nicht geladen werden]")
         except Exception:
             image_label.setText("[Bild konnte nicht geladen werden]")
         layout.addWidget(image_label)
-
         label = QLabel(
             "<h2>Max Krebs</h2>"
             "<p><b>E-Mail:</b> max.krebs@example.com</p>"
             "<p>© Release 25.06.2024</p>"
             "<p>Mit Liebe gecodet durch Max Krebs</p>"
         )
-        label.setAlignment(Qt.AlignCenter)
+        label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(label)
         self.setLayout(layout)
 
@@ -86,13 +83,11 @@ class AutorWindow(QWidget):
 # Drag-and-drop Bereich
 # --------------------------------------------------------------------------- #
 class DragDropWidget(QFrame):
-
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setAcceptDrops(True)
         self.setFixedHeight(150)
         self.on_files_dropped = None
-
         self.setStyleSheet(
             """
             QFrame {
@@ -107,57 +102,55 @@ class DragDropWidget(QFrame):
             }
         """
         )
-
         self._layout = QVBoxLayout(self)
         label = QLabel("Dateien für Drag & Drop hier ablegen")
-        label.setAlignment(Qt.AlignCenter)
+        label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self._layout.addWidget(label)
 
-    # Qt drag / drop Event manager ------------------------------------------------ #
-    def dragEnterEvent(self, event: QDragEnterEvent):
-        if event.mimeData().hasUrls():
-            event.acceptProposedAction()
+    def dragEnterEvent(self, a0: QDragEnterEvent):
+        md = a0.mimeData()
+        if md is not None and md.hasUrls():
+            a0.acceptProposedAction()
         else:
-            event.ignore()
+            a0.ignore()
 
-    def dragMoveEvent(self, event: QDragEnterEvent):
-        if event.mimeData().hasUrls():
-            event.acceptProposedAction()
+    def dragMoveEvent(self, a0: QDragEnterEvent):
+        md = a0.mimeData()
+        if md is not None and md.hasUrls():
+            a0.acceptProposedAction()
         else:
-            event.ignore()
+            a0.ignore()
 
-    def dropEvent(self, event: QDropEvent):
-        if event.mimeData().hasUrls():
+    def dropEvent(self, a0: QDropEvent):
+        md = a0.mimeData()
+        if md is not None and md.hasUrls():
             local_files = [
-                url.toLocalFile() for url in event.mimeData().urls() if url.isLocalFile()
+                url.toLocalFile() for url in md.urls() if url.isLocalFile()
             ]
-            if self.on_files_dropped:
+            if callable(self.on_files_dropped):
                 self.on_files_dropped(local_files)
-            event.acceptProposedAction()
+            a0.acceptProposedAction()
         else:
-            event.ignore()
+            a0.ignore()
+# --------------------------------------------------------------------------- #
+# Datei Liste Widget
+# --------------------------------------------------------------------------- #
 class FileListWidget(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
-
         main_layout = QVBoxLayout(self)
         main_layout.setContentsMargins(0, 0, 0, 0)
-
-        # Header
         header_layout = QHBoxLayout()
         header_layout.setContentsMargins(10, 10, 10, 10)
-
         self.btn_refresh = QPushButton()
-        self.btn_refresh.setIcon(self.style().standardIcon(QStyle.SP_BrowserReload))
-        self.btn_refresh.setFixedSize(32, 32)
+        style = QApplication.style() if hasattr(QApplication, 'style') else None
+        if style:
+            self.btn_refresh.setIcon(style.standardIcon(QStyle.StandardPixmap.SP_BrowserReload))
         self.btn_refresh.setToolTip("Dateiliste aktualisieren")
-
         header_layout.addWidget(QLabel("Gespeicherte Dateien:"))
         header_layout.addStretch()
         header_layout.addWidget(self.btn_refresh)
         main_layout.addLayout(header_layout)
-
-        # List
         self.list_widget = QListWidget()
         self.list_widget.setSelectionMode(QAbstractItemView.SingleSelection)
         self.list_widget.setStyleSheet(
@@ -179,23 +172,19 @@ class FileListWidget(QWidget):
         """
         )
         main_layout.addWidget(self.list_widget)
-
         btn_layout = QHBoxLayout()
         self.btn_add = QPushButton()
-        self.btn_add.setIcon(self.style().standardIcon(QStyle.SP_DialogOpenButton))
-        self.btn_add.setFixedSize(36, 36)
+        if style:
+            self.btn_add.setIcon(style.standardIcon(QStyle.StandardPixmap.SP_DialogOpenButton))
         self.btn_add.setToolTip("Dateien hinzufügen")
-
         self.btn_delete = QPushButton()
-        self.btn_delete.setIcon(self.style().standardIcon(QStyle.SP_TrashIcon))
-        self.btn_delete.setFixedSize(36, 36)
+        if style:
+            self.btn_delete.setIcon(style.standardIcon(QStyle.StandardPixmap.SP_TrashIcon))
         self.btn_delete.setToolTip("Ausgewählte Datei löschen")
-
         self.btn_download = QPushButton()
-        self.btn_download.setIcon(self.style().standardIcon(QStyle.SP_DialogSaveButton))
-        self.btn_download.setFixedSize(36, 36)
+        if style:
+            self.btn_download.setIcon(style.standardIcon(QStyle.StandardPixmap.SP_DialogSaveButton))
         self.btn_download.setToolTip("Ausgewählte Datei herunterladen")
-
         btn_layout.addWidget(self.btn_add)
         btn_layout.addWidget(self.btn_delete)
         btn_layout.addWidget(self.btn_download)
@@ -208,39 +197,28 @@ class FileListWidget(QWidget):
     def add_file_item(self, file_id: int, filename: str, filetype: str):
         item = QListWidgetItem()
         item.setText(f"{filename} ({filetype})")
-        item.setData(Qt.UserRole, file_id)
-        item.setIcon(self._icon_for_type(filetype))
+        item.setData(Qt.ItemDataRole.UserRole, file_id)
         self.list_widget.addItem(item)
 
     def selected_file_id(self):
         item = self.list_widget.currentItem()
-        return item.data(Qt.UserRole) if item else None
+        return item.data(Qt.ItemDataRole.UserRole) if item else None
 
-    # Internal helpers ------------------------------------------------------- #
     @staticmethod
     def _icon_for_type(mime: str) -> QIcon:
-        style = QApplication.style()
+        style = QApplication.style() if hasattr(QApplication, 'style') else None
         if mime.startswith("image/"):
-            return QIcon.fromTheme("image-x-generic") or style.standardIcon(
-                QStyle.SP_FileIcon
-            )
+            return QIcon.fromTheme("image-x-generic") or (style.standardIcon(QStyle.StandardPixmap.SP_FileIcon) if style else QIcon())
         if "pdf" in mime:
-            return QIcon.fromTheme("application-pdf") or style.standardIcon(
-                QStyle.SP_FileIcon
-            )
+            return QIcon.fromTheme("application-pdf") or (style.standardIcon(QStyle.StandardPixmap.SP_FileIcon) if style else QIcon())
         if "zip" in mime or "compressed" in mime:
-            return QIcon.fromTheme("package-x-generic") or style.standardIcon(
-                QStyle.SP_FileIcon
-            )
+            return QIcon.fromTheme("package-x-generic") or (style.standardIcon(QStyle.StandardPixmap.SP_FileIcon) if style else QIcon())
         if mime.startswith("text/") or mime in (
             "application/msword",
             "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
         ):
-            return QIcon.fromTheme("x-office-document") or style.standardIcon(
-                QStyle.SP_FileIcon
-            )
-        return style.standardIcon(QStyle.SP_FileIcon)
-
+            return QIcon.fromTheme("x-office-document") or (style.standardIcon(QStyle.StandardPixmap.SP_FileIcon) if style else QIcon())
+        return style.standardIcon(QStyle.StandardPixmap.SP_FileIcon) if style else QIcon()
 class ButtonUploadtoServer(QPushButton):
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -264,7 +242,7 @@ class ButtonUploadtoServer(QPushButton):
 # Main window
 # --------------------------------------------------------------------------- #
 class MainWindow(QMainWindow):
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
         self.setWindowTitle("Fileuploader")
         self.setWindowIcon(QIcon(os.path.join(os.path.dirname(__file__), "icon1.png")))
@@ -272,6 +250,7 @@ class MainWindow(QMainWindow):
         # Current database path
         # Drag-and-drop handler set up in UI initialization
         self.current_db_path = DB_NAME
+        self.settings_window = None
 
         # Menu bar
         self._create_menu()
@@ -285,17 +264,15 @@ class MainWindow(QMainWindow):
 
         # Init list
         self.load_files()
+    def show_settings_window(self) -> None:
+        if not hasattr(self, 'settings_window') or self.settings_window is None or not self.settings_window.isVisible():
+            # Create a *new* window (with this MainWindow as logical parent)
+            self.settings_window = SettingsWindow(self)
+            self.settings_window.show()
     
-    def show_settings_window(self):
-        # If the settings window does not exist or has been closed, create a new one
-        if self.settings_window_instance is None or not self.settings_window_instance.isVisible():
-            self.settings_window_instance = self.settings_window()
-            self.settings_window_instance.show()
-            self.settings_window_instance.raise_()
-            self.settings_window_instance.activateWindow()
-        else:
-            self.settings_window_instance.raise_()
-            self.settings_window_instance.activateWindow()
+        self.settings_window.raise_()
+        self.settings_window.activateWindow()
+
     def upload_to_server(self, files):
         """
         POST each file to a remote HTTP endpoint.
@@ -358,11 +335,10 @@ class MainWindow(QMainWindow):
         self.btn_download_all.setToolTip("Dateien auswählen")
 
         self.drag_drop = DragDropWidget()
-        self.drag_drop.on_files_dropped = lambda files: (
-            self.handle_files_upload(files),
+        def on_files_dropped(files):
+            self.handle_files_upload(files)
             Thread(target=self.upload_to_server, args=(files,), daemon=True).start()
-        )
-
+        self.drag_drop.on_files_dropped = on_files_dropped
         left_vbox.addWidget(self.btn_upload)
         left_vbox.addWidget(self.btn_download_all)
         left_vbox.addWidget(self.drag_drop)
@@ -393,11 +369,14 @@ class MainWindow(QMainWindow):
     # -------------------------- Menu bar ----------------------------------- #
     def _create_menu(self):
         menubar = self.menuBar()
+        if menubar is None:
+            menubar = QMenuBar(self)
+            self.setMenuBar(menubar)
 
         # Datei
         file_menu = menubar.addMenu("&Datei")
-        act_open = QAction("Öffnen…", self, shortcut="Ctrl+O")
-        act_open.triggered.connect(self.open_file_dialog)
+        act_open = QAction("Öffnen…", self)
+        act_open.setShortcut("Ctrl+O")
         file_menu.addAction(act_open)
         file_menu.addSeparator()
         act_db_location = QAction("Datenbank Speicherort ändern", self)
@@ -410,15 +389,21 @@ class MainWindow(QMainWindow):
         act_db_import.triggered.connect(self.database_upload)
         file_menu.addAction(act_db_import)
         file_menu.addSeparator()
-        act_exit = QAction("Beenden", self, shortcut="Ctrl+Q")
+        act_exit = QAction("Beenden", self)
+        act_exit.setShortcut("Ctrl+Q")
         act_exit.triggered.connect(self.close)
         file_menu.addAction(act_exit)
 
         # Bearbeiten
         edit_menu = menubar.addMenu("&Bearbeiten")
-        edit_menu.addAction(QAction("Rückgängig", self, shortcut="Ctrl+Z"))
-        edit_menu.addAction(QAction("Wiederholen", self, shortcut="Ctrl+Y"))
-        act_edit_menu = QAction("Einstellungen", self, shortcut="Ctrl+I")
+        act_undo = QAction("Rückgängig", self)
+        act_undo.setShortcut("Ctrl+Z")
+        edit_menu.addAction(act_undo)
+        act_redo = QAction("Wiederholen", self)
+        act_redo.setShortcut("Ctrl+Y")
+        edit_menu.addAction(act_redo)
+        act_edit_menu = QAction("Einstellungen", self)
+        act_edit_menu.setShortcut("Ctrl+I")
         act_edit_menu.triggered.connect(self.show_settings_window)
         edit_menu.addAction(act_edit_menu)
 
@@ -428,14 +413,12 @@ class MainWindow(QMainWindow):
         act_autor = QAction("Autor", self)
         act_autor.triggered.connect(self.show_autor)
         act_about.triggered.connect(self.show_about_dialog)
-        help_menu.addAction(act_about)   
-        help_menu.addAction(act_autor)  
+        help_menu.addAction(act_about)
+        help_menu.addAction(act_autor)
    
     def show_autor(self):
-        # Show an alert box with an online landscape image and author info
         msg = QMessageBox(self)
         msg.setWindowTitle("Autor")
-        # Load online image
         image_url = "https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=200&q=60"
         try:
             from PyQt5.QtGui import QPixmap
@@ -443,7 +426,7 @@ class MainWindow(QMainWindow):
             if response.status_code == 200:
                 pixmap = QPixmap()
                 pixmap.loadFromData(response.content)
-                pixmap = pixmap.scaledToWidth(100, Qt.SmoothTransformation)
+                pixmap = pixmap.scaledToWidth(100, Qt.TransformationMode.SmoothTransformation)
                 msg.setIconPixmap(pixmap)
         except Exception:
             pass
@@ -461,14 +444,6 @@ class MainWindow(QMainWindow):
             "Über Fileuploader",
             "Fileuploader v1.0\n\nEin einfacher Drag-&-Drop Datei-Uploader\n© Release 25.06.2024 \n\nMit Liebe gecodet durch Max Krebs\n",
         )
-    class settings_window(QWidget):
-        def __init__(self, parent=None):
-            super().__init__(parent)
-            self.setWindowTitle("Einstellungen")
-            self.setMinimumSize(600, 500)
-            layout = QVBoxLayout(self)
-            layout.addWidget(QLabel("Hier können Sie Ihre Einstellungen vornehmen."))
-            self.setLayout(layout)
     # -------------------------- Styling helper ---------------------------- #
     @staticmethod
     def _button_style() -> str:
@@ -663,7 +638,6 @@ class MainWindow(QMainWindow):
             return
             
         try:
-            # Ensure all changes are committed before copying
             self.conn.commit()
             
             # Copy the database file
@@ -755,34 +729,48 @@ class MainWindow(QMainWindow):
             # Try to reconnect to original database
             try:
                 self.conn = sqlite3.connect(self.current_db_path)
-                self._init_db()
-                self.load_files()
-            except:
-                pass
+            except Exception as e:
+                QMessageBox.warning(
+                    self,
+                    "Fehler",
+                    f"Fehler beim Wiederherstellen der Verbindung zur Original-Datenbank:\n{e}"
+                )
 
-    # -------------------------- Lifecycle --------------------------------- #
-    def closeEvent(self, event):
+    def closeEvent(self, a0):
         self.conn.close()
-        super().closeEvent(event)
+        super().closeEvent(a0)
 
-    def event(self, e):
-        if isinstance(e, _CallableEvent):
-            e.execute()
+    def event(self, event):
+        if isinstance(event, _CallableEvent):
+            event.execute()
             return True
-        return super().event(e)
+        return super().event(event)
 
+
+# --------------------------------------------------------------------------- #
+# Application entry point
+# --------------------------------------------------------------------------- #
+
+# --------------------------------------------------------------------------- #
+# Einstellungen Fenster (SettingsWindow)
+# --------------------------------------------------------------------------- #
+class SettingsWindow(QWidget):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle("Einstellungen")
+        self.setMinimumSize(600, 500)
+        layout = QVBoxLayout(self)
+        layout.addWidget(QLabel("Hier können Sie Ihre Einstellungen vornehmen."))
+        self.setLayout(layout)
 
 # --------------------------------------------------------------------------- #
 # Application entry point
 # --------------------------------------------------------------------------- #
 def main():
     app = QApplication(sys.argv)
-    app.setStyle("Fusion")
-    app.setWindowIcon(QIcon(os.path.join(os.path.dirname(__file__), "icon1.png")))  # <-- Add this line
     window = MainWindow()
     window.show()
     sys.exit(app.exec_())
-
 
 if __name__ == "__main__":
     main()
