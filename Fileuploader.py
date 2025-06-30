@@ -432,12 +432,28 @@ class MainWindow(QMainWindow):
         help_menu.addAction(act_autor)  
    
     def show_autor(self):
-        # Show the AutorWindow with the image and author info
-        if not hasattr(self, '_autor_window') or self._autor_window is None:
-            self._autor_window = AutorWindow(self)
-        self._autor_window.show()
-        self._autor_window.raise_()
-        self._autor_window.activateWindow()
+        # Show an alert box with an online landscape image and author info
+        msg = QMessageBox(self)
+        msg.setWindowTitle("Autor")
+        # Load online image
+        image_url = "https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=200&q=60"
+        try:
+            from PyQt5.QtGui import QPixmap
+            response = requests.get(image_url)
+            if response.status_code == 200:
+                pixmap = QPixmap()
+                pixmap.loadFromData(response.content)
+                pixmap = pixmap.scaledToWidth(100, Qt.SmoothTransformation)
+                msg.setIconPixmap(pixmap)
+        except Exception:
+            pass
+        msg.setText(
+            "<b>Max Krebs</b><br>"
+            "E-Mail: max.krebs@example.com<br>"
+            "© Release 25.06.2024<br>"
+            "Mit Liebe gecodet durch Max Krebs"
+        )
+        msg.exec_()
 
     def show_about_dialog(self):
         QMessageBox.about(
