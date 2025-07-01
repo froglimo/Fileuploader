@@ -12,6 +12,7 @@ import mimetypes
 import shutil
 import requests
 from threading import Thread
+import PyQt5 as Qt
 from PyQt5.QtWidgets import QMenuBar, QApplication
 
 # import flask  # still available if you want to spin up the server in‐process
@@ -19,10 +20,10 @@ from PyQt5.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
     QGridLayout, QFrame, QPushButton, QFileDialog, QListWidget,
     QListWidgetItem, QLabel, QMessageBox, QAbstractItemView, QStyle,
-    QAction,
+    QAction
 )
 from PyQt5.QtCore import Qt, QEvent
-from PyQt5.QtGui import QDragEnterEvent, QDropEvent, QIcon, QPixmap
+from PyQt5.QtGui import QDragEnterEvent, QDropEvent, QIcon, QPixmap, QWindow
 from PyQt5.QtWidgets import QStyle
 
 import threading
@@ -746,15 +747,16 @@ class MainWindow(QMainWindow):
             return True
         return super().event(event)
 
-
-# --------------------------------------------------------------------------- #
-# Application entry point
-# --------------------------------------------------------------------------- #
-
 # --------------------------------------------------------------------------- #
 # Einstellungen Fenster (SettingsWindow)
 # --------------------------------------------------------------------------- #
 from PyQt5.QtWidgets import QWidget, QFrame, QLabel, QVBoxLayout
+
+from PyQt5.QtWidgets import (
+    QApplication, QWidget, QVBoxLayout, QFrame, QLabel
+)
+from PyQt5.QtCore import Qt
+from PyQt5.QtGui import QPalette, QColor
 
 class SettingsWindow(QWidget):
     """
@@ -765,9 +767,23 @@ class SettingsWindow(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
 
+        # Force this widget to be a top-level window with title bar
+        self.setWindowFlags(
+            Qt.Window
+            | Qt.WindowTitleHint
+            | Qt.WindowCloseButtonHint
+            | Qt.WindowMinimizeButtonHint
+        )
+
         # Window properties
         self.setWindowTitle("Einstellungen")
         self.setMinimumSize(600, 500)
+
+        # Give the main window a background color
+        self.setAutoFillBackground(True)
+        pal = self.palette()
+        pal.setColor(QPalette.Window, QColor(245, 245, 245))
+        self.setPalette(pal)
 
         # Main layout for this widget
         main_layout = QVBoxLayout(self)
@@ -777,22 +793,37 @@ class SettingsWindow(QWidget):
         frame.setFrameShape(QFrame.StyledPanel)
         frame.setFrameShadow(QFrame.Raised)
 
+        # Give the frame its own background so it stands out
+        frame.setAutoFillBackground(True)
+        frame_pal = frame.palette()
+        frame_pal.setColor(QPalette.Window, QColor(255, 255, 255))
+        frame.setPalette(frame_pal)
+
         # Layout inside the frame
         frame_layout = QVBoxLayout(frame)
-        frame_layout.addWidget(QLabel("Hier können Sie Ihre Einstellungen vornehmen."))
+        frame_layout.setContentsMargins(20, 20, 20, 20)
+        frame_layout.setSpacing(20)
+        # Add a label to the frame
+        label = QLabel(
+            "<h2>Allgemeine Einstellungen</h2>"
+            "<p>Hier können Sie Ihre Einstellungen anpassen.</p>"
+        )
+        label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        label.setStyleSheet(
+            """
+            QLabel {
+                color: #374151;
+                font-size: 20px;
+                font-weight: 600;
+            }
+        """
+        )
 
         # Add the frame to the main window layout
         main_layout.addWidget(frame)
 
         # Apply the layout to this widget
         self.setLayout(main_layout)
-
-    def open(self):
-        """
-        Shows the settings window.
-        """
-        self.show()
-
 # --------------------------------------------------------------------------- #
 # Application entry point
 # --------------------------------------------------------------------------- #
