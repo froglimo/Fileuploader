@@ -754,14 +754,44 @@ class MainWindow(QMainWindow):
 # --------------------------------------------------------------------------- #
 # Einstellungen Fenster (SettingsWindow)
 # --------------------------------------------------------------------------- #
+from PyQt5.QtWidgets import QWidget, QFrame, QLabel, QVBoxLayout
+
 class SettingsWindow(QWidget):
+    """
+    A standalone settings window that displays a QFrame container
+    for user configuration controls.
+    """
+
     def __init__(self, parent=None):
         super().__init__(parent)
+
+        # Window properties
         self.setWindowTitle("Einstellungen")
         self.setMinimumSize(600, 500)
-        layout = QVBoxLayout(self)
-        layout.addWidget(QLabel("Hier können Sie Ihre Einstellungen vornehmen."))
-        self.setLayout(layout)
+
+        # Main layout for this widget
+        main_layout = QVBoxLayout(self)
+
+        # Create a styled frame to host settings content
+        frame = QFrame(self)
+        frame.setFrameShape(QFrame.StyledPanel)
+        frame.setFrameShadow(QFrame.Raised)
+
+        # Layout inside the frame
+        frame_layout = QVBoxLayout(frame)
+        frame_layout.addWidget(QLabel("Hier können Sie Ihre Einstellungen vornehmen."))
+
+        # Add the frame to the main window layout
+        main_layout.addWidget(frame)
+
+        # Apply the layout to this widget
+        self.setLayout(main_layout)
+
+    def open(self):
+        """
+        Shows the settings window.
+        """
+        self.show()
 
 # --------------------------------------------------------------------------- #
 # Application entry point
