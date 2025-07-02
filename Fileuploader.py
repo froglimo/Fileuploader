@@ -777,8 +777,8 @@ class SettingsWindow(QWidget):
 
         # Window properties
         self.setWindowTitle("Einstellungen")
-        self.setMinimumSize(400, 400)
-        self.setMaximumSize(600, 600)
+        self.setMinimumSize(600, 600)
+        self.setMaximumSize(800, 800)
 
         # Give the main window a background color
         self.setAutoFillBackground(True)
@@ -804,22 +804,44 @@ class SettingsWindow(QWidget):
         frame_layout = QVBoxLayout(frame)
         frame_layout.setContentsMargins(20, 20, 20, 20)
         frame_layout.setSpacing(20)
+        
+        Button = QAction("Dark Mode", self)
+        Button.setCheckable(True)
+        Button.setChecked(False)   
+        Button.setStatusTip("Aktivieren Sie den Dark Mode für die Anwendung.")
         # Add a label to the frame
         label = QLabel(
-            "<h2>Allgemeine Einstellungen</h2>"
-            "<p>Hier können Sie Ihre Einstellungen anpassen.</p>"
-        )
-        label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+                "<h2>Allgemeine Einstellungen</h2>"
+                "<p>Hier können Sie Ihre Einstellungen anpassen.</p>"
+                "<p>Dark Mode:</p>"
+                )
+        label.setAlignment(Qt.AlignmentFlag.AlignLeft)
         label.setStyleSheet(
             """
             QLabel {
                 color: #374151;
                 font-size: 20px;
-                font-weight: 600;
+                font-weight: 20pt;
             }
         """
         )
-
+        
+        label2 = QLabel(
+            "<p>Diese Einstellungen sind nur ein Platzhalter. "
+            "In einer echten Anwendung würden hier Konfigurationsoptionen angezeigt.</p>"
+        )
+        label2.setAlignment(Qt.AlignmentFlag.AlignRight)
+        label2.setStyleSheet(
+                    """
+            QLabel {
+                color: #374151;
+                font-size: 20px;
+                font-size: 20pt;
+            }
+        """
+        )
+        frame_layout.addWidget(label)
+        frame_layout.addWidget(label2)
         # Add the frame to the main window layout
         main_layout.addWidget(frame)
 
