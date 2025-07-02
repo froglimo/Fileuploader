@@ -777,7 +777,8 @@ class SettingsWindow(QWidget):
 
         # Window properties
         self.setWindowTitle("Einstellungen")
-        self.setMinimumSize(600, 500)
+        self.setMinimumSize(400, 400)
+        self.setMaximumSize(600, 600)
 
         # Give the main window a background color
         self.setAutoFillBackground(True)
