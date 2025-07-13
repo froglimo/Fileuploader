@@ -72,7 +72,7 @@ class AutorWindow(QWidget):
         layout.addWidget(image_label)
         label = QLabel(
             "<h2>Max Krebs</h2>"
-            "<p><b>E-Mail:</b> max.krebs@example.com</p>"
+            "<p><b>E-Mail:</b> melvis@posteo.de</p>"
             "<p>© Release 25.06.2024</p>"
             "<p>Mit Liebe gecodet durch Max Krebs</p>"
         )
