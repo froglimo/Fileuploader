@@ -92,9 +92,10 @@ class DragDropWidget(QFrame):
         self.setStyleSheet(
             """
             QFrame {
-                border: 2px dashed #a3a3a3;
+                border: 2px solid #a3a3a3;
                 border-radius: 12px;
                 background-color: #fafafa;
+                padding:10px;
             }
             QLabel {
                 color: #6b7280;
