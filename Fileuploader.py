@@ -814,7 +814,7 @@ class SettingsWindow(QWidget):
         label = QLabel(
                 "<h2>Allgemeine Einstellungen</h2>"
                 "<p>Hier können Sie Ihre Einstellungen anpassen.</p>"
-                "<p>Dark Mode:</p>"
+                "<p>Dark Mode:<button></button></p>"
                 )
         label.setAlignment(Qt.AlignmentFlag.AlignLeft)
         label.setStyleSheet(
@@ -828,8 +828,9 @@ class SettingsWindow(QWidget):
         )
         
         label2 = QLabel(
-            "<p>Diese Einstellungen sind nur ein Platzhalter. "
-            "In einer echten Anwendung würden hier Konfigurationsoptionen angezeigt.</p>"
+            "<p>Anwenden</p>"
+            "<p>Zurücksetzen</p>"
+            "<p>Abbrechen</p>"
         )
         label2.setAlignment(Qt.AlignmentFlag.AlignRight)
         label2.setStyleSheet(
