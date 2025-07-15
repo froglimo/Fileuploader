@@ -761,41 +761,38 @@ from PyQt5.QtGui import QPalette, QColor
 
 class SettingsWindow(QWidget):
     """
-    A standalone settings window that displays a QFrame container
-    for user configuration controls.
+    Stand-alone settings window that hosts user-configurable options.
+    Now includes Apply / Reset / Cancel buttons with the same style
+    used for the main window’s upload / download buttons.
     """
 
     def __init__(self, parent=None):
         super().__init__(parent)
 
-        # Force this widget to be a top-level window with title bar
+        # Window flags & properties
         self.setWindowFlags(
             Qt.Window
             | Qt.WindowTitleHint
             | Qt.WindowCloseButtonHint
             | Qt.WindowMinimizeButtonHint
         )
-
-        # Window properties
         self.setWindowTitle("Einstellungen")
         self.setMinimumSize(600, 600)
         self.setMaximumSize(800, 800)
 
-        # Give the main window a background color
+        # Light-grey background to distinguish from the frame
         self.setAutoFillBackground(True)
         pal = self.palette()
         pal.setColor(QPalette.Window, QColor(245, 245, 245))
         self.setPalette(pal)
 
-        # Main layout for this widget
+        # Main vertical layout
         main_layout = QVBoxLayout(self)
 
-        # Create a styled frame to host settings content
+        # Styled frame for settings content
         frame = QFrame(self)
         frame.setFrameShape(QFrame.StyledPanel)
         frame.setFrameShadow(QFrame.Raised)
-
-        # Give the frame its own background so it stands out
         frame.setAutoFillBackground(True)
         frame_pal = frame.palette()
         frame_pal.setColor(QPalette.Window, QColor(255, 255, 255))
@@ -805,49 +802,59 @@ class SettingsWindow(QWidget):
         frame_layout = QVBoxLayout(frame)
         frame_layout.setContentsMargins(20, 20, 20, 20)
         frame_layout.setSpacing(20)
-        
-        Button = QAction("Dark Mode", self)
-        Button.setCheckable(True)
-        Button.setChecked(False)   
-        Button.setStatusTip("Aktivieren Sie den Dark Mode für die Anwendung.")
-        # Add a label to the frame
-        label = QLabel(
-                "<h2>Allgemeine Einstellungen</h2>"
-                "<p>Hier können Sie Ihre Einstellungen anpassen.</p>"
-                "<p>Dark Mode:<button></button></p>"
-                )
-        label.setAlignment(Qt.AlignmentFlag.AlignLeft)
-        label.setStyleSheet(
+
+        # Heading / description label
+        heading = QLabel(
+            "<h2>Allgemeine Einstellungen</h2>"
+            "<p>Hier können Sie Ihre Einstellungen anpassen.</p>"
+        )
+        heading.setAlignment(Qt.AlignLeft)
+        heading.setStyleSheet(
             """
             QLabel {
                 color: #374151;
                 font-size: 20px;
-                font-weight: 20pt;
+                font-weight: 600;
             }
-        """
+            """
         )
-        
-        label2 = QLabel(
-            "<p>Anwenden</p>"
-            "<p>Zurücksetzen</p>"
-            "<p>Abbrechen</p>"
-        )
-        label2.setAlignment(Qt.AlignmentFlag.AlignRight)
-        label2.setStyleSheet(
-                    """
-            QLabel {
-                color: #374151;
-                font-size: 20px;
-                font-size: 20pt;
-            }
-        """
-        )
-        frame_layout.addWidget(label)
-        frame_layout.addWidget(label2)
-        # Add the frame to the main window layout
+        frame_layout.addWidget(heading)
+
+        # TODO: Add real setting controls here …
+
+        # --- bottom button row ------------------------------------------------
+        btn_row = QHBoxLayout()
+        btn_row.addStretch()  # push buttons to the right
+
+        # Helper to reuse the same CSS as main buttons
+        # (import inside the method to avoid circular import at top level)
+        from Fileuploader import MainWindow  # type: ignore
+
+        def make_button(text: str) -> QPushButton:
+            btn = QPushButton(text)
+            btn.setFixedHeight(48)
+            btn.setStyleSheet(MainWindow._button_style())  # reuse style
+            return btn
+
+        self.btn_apply = make_button("Anwenden")
+        self.btn_reset = make_button("Zurücksetzen")
+        self.btn_cancel = make_button("Abbrechen")
+
+        # Connect Cancel to close the window by default
+        self.btn_cancel.clicked.connect(self.close)
+
+        # Add to layout
+        btn_row.addWidget(self.btn_apply)
+        btn_row.addWidget(self.btn_reset)
+        btn_row.addWidget(self.btn_cancel)
+
+        frame_layout.addLayout(btn_row)
+        # ---------------------------------------------------------------------
+
+        # Add framed content to main window layout
         main_layout.addWidget(frame)
 
-        # Apply the layout to this widget
+        # Finalise layout
         self.setLayout(main_layout)
 # --------------------------------------------------------------------------- #
 # Application entry point
