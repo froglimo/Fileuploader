@@ -1,17 +1,73 @@
 import os
 import sys
 
-# Ensure 'packages' folder in project root is importable
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-PACKAGES_DIR = os.path.join(BASE_DIR, "packages")
-if PACKAGES_DIR not in sys.path:
-    sys.path.insert(0, PACKAGES_DIR)
-
 import sqlite3
 import mimetypes
 import shutil
 import requests
 from threading import Thread
+# --------------------------------------------------------------------------- #
+# Minimal Flask application (WSGI) used by the internal background server
+# as well as external WSGI servers (see wsgi.py).  By defining the `app`
+# object here, we no longer rely on a separate server.py file.
+# --------------------------------------------------------------------------- #
+from flask import Flask, request, jsonify, send_from_directory, abort
+from werkzeug.utils import secure_filename
+import io
+import zipfile
+from typing import List
+
+app = Flask(__name__)
+
+# Where to store uploaded files (will recreate folder structure)
+UPLOAD_FOLDER_HTTP = os.path.join(os.path.dirname(__file__), "uploaded_folders")
+os.makedirs(UPLOAD_FOLDER_HTTP, exist_ok=True)
+app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER_HTTP
+
+
+def sanitize_relative_path(rel_path: str) -> str:
+    """
+    Preserve sub-directories while sanitising each component
+    to eliminate '..', empty parts, or dangerous characters.
+    """
+    rel_path = os.path.normpath(rel_path)
+    parts: List[str] = []
+    for part in rel_path.split(os.sep):
+        if part in ("", ".", ".."):
+            continue
+        parts.append(secure_filename(part))
+    return os.path.join(*parts) if parts else ""
+
+
+def safe_join(base_dir: str, *paths: str) -> str:
+    """
+    Ensures the final absolute path is still inside base_dir.
+    """
+    final_path = os.path.abspath(os.path.join(base_dir, *paths))
+    if not final_path.startswith(os.path.abspath(base_dir)):
+        raise ValueError("Attempted path traversal attack")
+    return final_path
+
+
+@app.route("/upload", methods=["POST"])
+def handle_single_file_upload():
+    """
+    Simple endpoint used by the Qt desktop client to upload a single file.
+    """
+    file = request.files.get("file")
+    if not file or file.filename == "":
+        return jsonify(success=False, message="No file received"), 400
+
+    filename = secure_filename(file.filename)
+    dest_path = safe_join(app.config["UPLOAD_FOLDER"], filename)
+    os.makedirs(os.path.dirname(dest_path), exist_ok=True)
+    file.save(dest_path)
+
+    return jsonify(success=True, file_saved=filename, upload_folder=app.config["UPLOAD_FOLDER"])
+
+# Additional routes (optional) ------------------------------------------------
+# You can add more endpoints here (e.g. /download) if needed by other clients.
+# --------------------------------------------------------------------------- #
 import PyQt5 as Qt
 from PyQt5.QtWidgets import QMenuBar, QApplication
 
@@ -29,8 +85,11 @@ from PyQt5.QtWidgets import QStyle
 import threading
 
 def run_server():
-    import server  # Make sure server.py is in the same directory or in your PYTHONPATH
-    server.app.run(port=5001, use_reloader=False)  # use_reloader=False is important for threads
+    """
+    Start the internal Flask server defined in this module.
+    Running in a dedicated thread keeps the GUI responsive.
+    """
+    app.run(port=5001, use_reloader=False)  # use_reloader=False is important for threads
 
 # Start the server in a background thread
 server_thread = threading.Thread(target=run_server, daemon=True)

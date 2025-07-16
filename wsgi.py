@@ -1,4 +1,4 @@
-from server import app
+from Fileuploader import app  # Import the Flask `app` instance directly from Fileuploader.py
 
 # This file is the entrypoint for WSGI servers (e.g., gunicorn, uWSGI).
 # Usage example:
