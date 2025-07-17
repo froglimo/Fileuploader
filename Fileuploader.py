@@ -866,6 +866,8 @@ class SettingsWindow(QWidget):
         heading = QLabel(
             "<h2>Allgemeine Einstellungen</h2>"
             "<p>Hier können Sie Ihre Einstellungen anpassen.</p>"
+            "<p>dark mode Switch:</p>"
+            "<p>Dauer bis zum Timeout Server:</p>"
         )
         heading.setAlignment(Qt.AlignLeft)
         heading.setStyleSheet(
