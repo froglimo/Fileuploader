@@ -75,7 +75,7 @@ from PyQt5.QtWidgets import QMenuBar, QApplication
 from PyQt5.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
     QGridLayout, QFrame, QPushButton, QFileDialog, QListWidget,
-    QListWidgetItem, QLabel, QMessageBox, QAbstractItemView, QStyle,
+    QListWidgetItem, QLabel, QMessageBox, QAbstractItemView, QCheckBox, QSpinBox, QStyle,
     QAction
 )
 from PyQt5.QtCore import Qt, QEvent
@@ -200,6 +200,20 @@ class FileListWidget(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
         main_layout = QVBoxLayout(self)
+
+        # Styled frame for settings content
+        frame = QFrame(self)
+        frame.setFrameShape(QFrame.StyledPanel)
+        frame.setFrameShadow(QFrame.Raised)
+        frame.setAutoFillBackground(True)
+        frame_pal = frame.palette()
+        frame_pal.setColor(QPalette.Window, QColor(255, 255, 255))
+        frame.setPalette(frame_pal)
+
+        # Layout inside the frame
+        frame_layout = QVBoxLayout(frame)
+        frame_layout.setContentsMargins(20, 20, 20, 20)
+        frame_layout.setSpacing(20)
         main_layout.setContentsMargins(0, 0, 0, 0)
         header_layout = QHBoxLayout()
         header_layout.setContentsMargins(10, 10, 10, 10)
@@ -312,6 +326,7 @@ class MainWindow(QMainWindow):
         # Drag-and-drop handler set up in UI initialization
         self.current_db_path = DB_NAME
         self.settings_window = None
+        self.server_timeout = 30
 
         # Menu bar
         self._create_menu()
@@ -358,7 +373,7 @@ class MainWindow(QMainWindow):
                     self.run_on_ui_thread(
                         lambda: QMessageBox.warning(
                             self, "Upload Failed",
-                            f"Failed to upload '{path}' to server:\n{exec}"
+                            f"Failed to upload '{path}' to server:\n{exc}"
                         )
                     )
         if successes:
@@ -552,7 +567,7 @@ class MainWindow(QMainWindow):
             self.handle_files_upload(files)
     
     def handle_files_upload(self, files):
-        allowed = {".doc", ".docx", ".odt", ".odp", ".txt", ".pdf", ".zip", ".7z", ".png", ".jpg", ".jpeg", ".bmp", ".heic", ".webp", "*.avif"}
+        allowed = {".doc", ".docx", ".odt", ".odp", ".txt", ".pdf", ".zip", ".7z", ".png", ".jpg", ".jpeg", ".bmp", ".heic", ".webp", ".avif"}
         valid = [f for f in files if os.path.splitext(f)[1].lower() in allowed]
 
         if not valid:
@@ -785,7 +800,7 @@ class MainWindow(QMainWindow):
             QMessageBox.warning(
                 self,
                 "Fehler",
-                f"Fehler beim Importieren der Datenbank:\n{exec}"
+                f"Fehler beim Importieren der Datenbank:\n{exc}"
             )
             # Try to reconnect to original database
             try:
@@ -813,7 +828,7 @@ class MainWindow(QMainWindow):
 from PyQt5.QtWidgets import QWidget, QFrame, QLabel, QVBoxLayout
 
 from PyQt5.QtWidgets import (
-    QApplication, QWidget, QVBoxLayout, QFrame, QLabel
+    QApplication, QWidget, QVBoxLayout, QFrame, QLabel, QCheckBox, QSpinBox, QHBoxLayout
 )
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QPalette, QColor
@@ -824,10 +839,32 @@ class SettingsWindow(QWidget):
     Now includes Apply / Reset / Cancel buttons with the same style
     used for the main window’s upload / download buttons.
     """
-
+    @staticmethod
+    def apply_dark_palette(enable: bool):
+        qapp = QApplication.instance()
+        if enable:
+            dark = QPalette()
+            dark.setColor(QPalette.Window, QColor(53, 53, 53))
+            dark.setColor(QPalette.WindowText, Qt.white)
+            dark.setColor(QPalette.Base, QColor(35, 35, 35))
+            dark.setColor(QPalette.AlternateBase, QColor(53, 53, 53))
+            dark.setColor(QPalette.ToolTipBase, Qt.white)
+            dark.setColor(QPalette.ToolTipText, Qt.white)
+            dark.setColor(QPalette.Text, Qt.white)
+            dark.setColor(QPalette.Button, QColor(53, 53, 53))
+            dark.setColor(QPalette.ButtonText, Qt.white)
+            dark.setColor(QPalette.BrightText, Qt.red)
+            dark.setColor(QPalette.Link, QColor(42, 130, 218))
+            dark.setColor(QPalette.Highlight, QColor(42, 130, 218))
+            dark.setColor(QPalette.HighlightedText, Qt.black)
+            qapp.setPalette(dark)
+            qapp.setStyleSheet("QToolTip { color: #ffffff; background-color: #2a82da; border: 0px; }")
+        else:
+            qapp.setPalette(QApplication().style().standardPalette())
+            qapp.setStyleSheet("")
     def __init__(self, parent=None):
         super().__init__(parent)
-
+        
         # Window flags & properties
         self.setWindowFlags(
             Qt.Window
@@ -847,6 +884,107 @@ class SettingsWindow(QWidget):
 
         # Main vertical layout
         main_layout = QVBoxLayout(self)
+        
+        self.chk_darkmode = QCheckBox("Dark-Mode aktivieren")
+        # Anfangszustand aus Hauptfenster übernehmen
+        self.chk_darkmode.setChecked(self.parent().palette().color(QPalette.Window).value() < 100)
+
+        self.spn_timeout = QSpinBox()
+        self.spn_timeout.setRange(5, 300)
+        self.spn_timeout.setSuffix(" s")
+        self.spn_timeout.setValue(parent.server_timeout if parent else 30)
+
+        # Build the visible settings UI ---------------------------------------------------
+        # Styled frame for settings content
+        frame = QFrame(self)
+        frame.setFrameShape(QFrame.StyledPanel)
+        frame.setFrameShadow(QFrame.Raised)
+        frame.setAutoFillBackground(True)
+        frame_pal = frame.palette()
+        frame_pal.setColor(QPalette.Window, QColor(255, 255, 255))
+        frame.setPalette(frame_pal)
+
+        # Layout inside the frame
+        frame_layout = QVBoxLayout(frame)
+        frame_layout.setContentsMargins(20, 20, 20, 20)
+        frame_layout.setSpacing(20)
+
+        # Heading / description label
+        heading = QLabel(
+            "<h2>Allgemeine Einstellungen</h2>"
+            "<p>Hier können Sie Ihre Einstellungen anpassen.</p>"
+            "<p>Dark-Mode:</p>"
+            "<p>Server-Timeout:</p>"
+        )
+        heading.setAlignment(Qt.AlignLeft)
+        heading.setStyleSheet(
+            """
+            QLabel {
+                color: #374151;
+                font-size: 20px;
+                font-weight: 600;
+            }
+            """
+        )
+        frame_layout.addWidget(heading)
+
+        # Add controls
+        frame_layout.addWidget(self.chk_darkmode)
+        frame_layout.addWidget(QLabel("Server-Timeout:"))
+        frame_layout.addWidget(self.spn_timeout)
+
+        # --- bottom button row -----------------------------------------------------------
+        btn_row = QHBoxLayout()
+        btn_row.addStretch()
+
+        def make_button(text: str) -> QPushButton:
+            btn = QPushButton(text)
+            btn.setFixedHeight(48)
+            btn.setStyleSheet(MainWindow._button_style())
+            return btn
+
+        self.btn_apply = make_button("Anwenden")
+        self.btn_reset = make_button("Zurücksetzen")
+        self.btn_cancel = make_button("Abbrechen")
+
+        # Wire clicks
+        self.btn_apply.clicked.connect(self.apply_settings)
+        self.btn_reset.clicked.connect(self.reset_settings)
+        self.btn_cancel.clicked.connect(self.close)
+
+        btn_row.addWidget(self.btn_apply)
+        btn_row.addWidget(self.btn_reset)
+        btn_row.addWidget(self.btn_cancel)
+        frame_layout.addLayout(btn_row)
+
+        # Add framed content to main layout
+        main_layout.addWidget(frame)
+
+        
+    # ------------------------------------------------------------------ #
+    # Neue Methoden
+    # ------------------------------------------------------------------ #
+    def apply_settings(self):
+        """Dark-Mode & Timeout übernehmen"""
+        main: MainWindow = self.parent()  # type: ignore
+        if main:
+            # Dark-Mode
+            SettingsWindow.apply_dark_palette(self.chk_darkmode.isChecked())
+            # Timeout
+            main.server_timeout = self.spn_timeout.value()
+        QMessageBox.information(self, "Einstellungen", "Änderungen angewendet.")
+
+    def reset_settings(self):
+        """Controls auf aktuelle Werte des Hauptfensters zurücksetzen"""
+        main: MainWindow = self.parent()  # type: ignore
+        if main:
+            self.chk_darkmode.setChecked(
+                main.palette().color(QPalette.Window).value() < 100
+            )
+            self.spn_timeout.setValue(main.server_timeout)
+            return  # Stop here, UI components already built in __init__
+
+
 
         # Styled frame for settings content
         frame = QFrame(self)
@@ -880,6 +1018,10 @@ class SettingsWindow(QWidget):
             """
         )
         frame_layout.addWidget(heading)
+        # Add the Dark-Mode checkbox and timeout spin box
+        frame_layout.addWidget(self.chk_darkmode)
+        frame_layout.addWidget(QLabel("Server-Timeout:"))
+        frame_layout.addWidget(self.spn_timeout)
 
         # TODO: Add real setting controls here …
 
@@ -889,7 +1031,7 @@ class SettingsWindow(QWidget):
 
         # Helper to reuse the same CSS as main buttons
         # (import inside the method to avoid circular import at top level)
-        from Fileuploader import MainWindow  # type: ignore
+        # MainWindow is already defined above; no need to re-import
 
         def make_button(text: str) -> QPushButton:
             btn = QPushButton(text)
@@ -900,6 +1042,10 @@ class SettingsWindow(QWidget):
         self.btn_apply = make_button("Anwenden")
         self.btn_reset = make_button("Zurücksetzen")
         self.btn_cancel = make_button("Abbrechen")
+
+        # Connect apply and reset buttons
+        self.btn_apply.clicked.connect(self.apply_settings)
+        self.btn_reset.clicked.connect(self.reset_settings)
 
         # Connect Cancel to close the window by default
         self.btn_cancel.clicked.connect(self.close)
