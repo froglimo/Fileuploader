@@ -68,7 +68,7 @@ def handle_single_file_upload():
 # Additional routes (optional) ------------------------------------------------
 # You can add more endpoints here (e.g. /download) if needed by other clients.
 # --------------------------------------------------------------------------- #
-import PyQt5 as Qt
+# Removed redundant import that shadowed later Qt enum import
 from PyQt5.QtWidgets import QMenuBar, QApplication
 
 # import flask  # still available if you want to spin up the server in‐process
@@ -833,15 +833,46 @@ from PyQt5.QtWidgets import (
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QPalette, QColor
 
+from PyQt5.QtWidgets import (
+    QApplication,
+    QWidget,
+    QVBoxLayout,
+    QFrame,
+    QLabel,
+    QCheckBox,
+    QSpinBox,
+    QHBoxLayout,
+    QPushButton,
+    QMessageBox,
+)
+from PyQt5.QtCore import Qt
+from PyQt5.QtGui import QPalette, QColor
+
+
 class SettingsWindow(QWidget):
     """
-    Stand-alone settings window that hosts user-configurable options.
-    Now includes Apply / Reset / Cancel buttons with the same style
-    used for the main window’s upload / download buttons.
+    Stand-alone settings window that hosts user-configurable options
+    (currently dark-mode + server timeout).
     """
+
+    # -------------------------------------------------------------- #
+    # Static helpers
+    # -------------------------------------------------------------- #
     @staticmethod
-    def apply_dark_palette(enable: bool):
-        qapp = QApplication.instance()
+    def _is_dark(app: QApplication) -> bool:
+        """Return True when the application is currently in dark mode."""
+        # “dark” here == very low lightness (HSV value) of the Window colour
+        return app.palette().color(QPalette.Window).value() < 100
+
+    @staticmethod
+    def apply_dark_palette(enable: bool) -> None:
+        """
+        Switch the entire QApplication between light and dark palettes.
+        """
+        app = QApplication.instance()
+        if app is None:  # safety guard (should never happen in normal runtime)
+            return
+
         if enable:
             dark = QPalette()
             dark.setColor(QPalette.Window, QColor(53, 53, 53))
@@ -857,15 +888,21 @@ class SettingsWindow(QWidget):
             dark.setColor(QPalette.Link, QColor(42, 130, 218))
             dark.setColor(QPalette.Highlight, QColor(42, 130, 218))
             dark.setColor(QPalette.HighlightedText, Qt.black)
-            qapp.setPalette(dark)
-            qapp.setStyleSheet("QToolTip { color: #ffffff; background-color: #2a82da; border: 0px; }")
+            app.setPalette(dark)
+            # Optional: keep default tooltip styling in dark mode
+            app.setStyleSheet(
+                "QToolTip { color: #ffffff; background-color: #2a82da; border: 0px; }"
+            )
         else:
-            qapp.setPalette(QApplication().style().standardPalette())
-            qapp.setStyleSheet("")
+            app.setPalette(app.style().standardPalette())
+            app.setStyleSheet("")
+
+    # -------------------------------------------------------------- #
+    # Construction
+    # -------------------------------------------------------------- #
     def __init__(self, parent=None):
         super().__init__(parent)
-        
-        # Window flags & properties
+
         self.setWindowFlags(
             Qt.Window
             | Qt.WindowTitleHint
@@ -876,78 +913,68 @@ class SettingsWindow(QWidget):
         self.setMinimumSize(600, 600)
         self.setMaximumSize(800, 800)
 
-        # Light-grey background to distinguish from the frame
+        # Slight grey background
         self.setAutoFillBackground(True)
         pal = self.palette()
         pal.setColor(QPalette.Window, QColor(245, 245, 245))
         self.setPalette(pal)
 
-        # Main vertical layout
+        # ------------------------------------------------------------------ #
+        # Main layout
+        # ------------------------------------------------------------------ #
         main_layout = QVBoxLayout(self)
-        
+
+        # Controls
         self.chk_darkmode = QCheckBox("Dark-Mode aktivieren")
-        # Anfangszustand aus Hauptfenster übernehmen
-        self.chk_darkmode.setChecked(self.parent().palette().color(QPalette.Window).value() < 100)
+        self.chk_darkmode.setChecked(SettingsWindow._is_dark(QApplication.instance()))
 
         self.spn_timeout = QSpinBox()
         self.spn_timeout.setRange(5, 300)
         self.spn_timeout.setSuffix(" s")
         self.spn_timeout.setValue(parent.server_timeout if parent else 30)
 
-        # Build the visible settings UI ---------------------------------------------------
-        # Styled frame for settings content
+        # Frame for nice white background
         frame = QFrame(self)
-        frame.setFrameShape(QFrame.StyledPanel)
-        frame.setFrameShadow(QFrame.Raised)
         frame.setAutoFillBackground(True)
         frame_pal = frame.palette()
-        frame_pal.setColor(QPalette.Window, QColor(255, 255, 255))
+        frame_pal.setColor(QPalette.Window, Qt.white)
         frame.setPalette(frame_pal)
 
-        # Layout inside the frame
         frame_layout = QVBoxLayout(frame)
         frame_layout.setContentsMargins(20, 20, 20, 20)
         frame_layout.setSpacing(20)
 
-        # Heading / description label
         heading = QLabel(
             "<h2>Allgemeine Einstellungen</h2>"
             "<p>Hier können Sie Ihre Einstellungen anpassen.</p>"
-            "<p>Dark-Mode:</p>"
-            "<p>Server-Timeout:</p>"
         )
-        heading.setAlignment(Qt.AlignLeft)
         heading.setStyleSheet(
-            """
-            QLabel {
-                color: #374151;
-                font-size: 20px;
-                font-weight: 600;
-            }
-            """
+            "QLabel { color: #374151; font-size: 20px; font-weight: 600; }"
         )
-        frame_layout.addWidget(heading)
 
-        # Add controls
+        frame_layout.addWidget(heading)
         frame_layout.addWidget(self.chk_darkmode)
         frame_layout.addWidget(QLabel("Server-Timeout:"))
         frame_layout.addWidget(self.spn_timeout)
 
-        # --- bottom button row -----------------------------------------------------------
+        # -------------------------------------------------------------- #
+        # Bottom button row
+        # -------------------------------------------------------------- #
         btn_row = QHBoxLayout()
         btn_row.addStretch()
 
-        def make_button(text: str) -> QPushButton:
+        def _make_btn(text: str) -> QPushButton:
+            # Avoid importing the same module (which may be __main__ when executed directly)
+            # MainWindow is already defined in this module, so we can reference it directly.
             btn = QPushButton(text)
             btn.setFixedHeight(48)
             btn.setStyleSheet(MainWindow._button_style())
             return btn
 
-        self.btn_apply = make_button("Anwenden")
-        self.btn_reset = make_button("Zurücksetzen")
-        self.btn_cancel = make_button("Abbrechen")
+        self.btn_apply = _make_btn("Anwenden")
+        self.btn_reset = _make_btn("Zurücksetzen")
+        self.btn_cancel = _make_btn("Abbrechen")
 
-        # Wire clicks
         self.btn_apply.clicked.connect(self.apply_settings)
         self.btn_reset.clicked.connect(self.reset_settings)
         self.btn_cancel.clicked.connect(self.close)
@@ -957,112 +984,42 @@ class SettingsWindow(QWidget):
         btn_row.addWidget(self.btn_cancel)
         frame_layout.addLayout(btn_row)
 
-        # Add framed content to main layout
         main_layout.addWidget(frame)
 
-        
-    # ------------------------------------------------------------------ #
-    # Neue Methoden
-    # ------------------------------------------------------------------ #
-    def apply_settings(self):
-        """Dark-Mode & Timeout übernehmen"""
-        main: MainWindow = self.parent()  # type: ignore
+    # -------------------------------------------------------------- #
+    # Public slots
+    # -------------------------------------------------------------- #
+    def apply_settings(self) -> None:
+        """
+        Apply the user-chosen settings to the main application.
+        """
+        main = self.parent()  # type: ignore
         if main:
-            # Dark-Mode
+            # Dark-mode
             SettingsWindow.apply_dark_palette(self.chk_darkmode.isChecked())
             # Timeout
             main.server_timeout = self.spn_timeout.value()
+
         QMessageBox.information(self, "Einstellungen", "Änderungen angewendet.")
 
-    def reset_settings(self):
-        """Controls auf aktuelle Werte des Hauptfensters zurücksetzen"""
-        main: MainWindow = self.parent()  # type: ignore
+    def reset_settings(self) -> None:
+        """
+        Restore UI controls to the values currently used by the application.
+        No widgets are recreated – only states are updated.
+        """
+        main = self.parent()  # type: ignore
         if main:
-            self.chk_darkmode.setChecked(
-                main.palette().color(QPalette.Window).value() < 100
-            )
+            self.chk_darkmode.setChecked(SettingsWindow._is_dark(QApplication.instance()))
             self.spn_timeout.setValue(main.server_timeout)
-            return  # Stop here, UI components already built in __init__
 
-
-
-        # Styled frame for settings content
-        frame = QFrame(self)
-        frame.setFrameShape(QFrame.StyledPanel)
-        frame.setFrameShadow(QFrame.Raised)
-        frame.setAutoFillBackground(True)
-        frame_pal = frame.palette()
-        frame_pal.setColor(QPalette.Window, QColor(255, 255, 255))
-        frame.setPalette(frame_pal)
-
-        # Layout inside the frame
-        frame_layout = QVBoxLayout(frame)
-        frame_layout.setContentsMargins(20, 20, 20, 20)
-        frame_layout.setSpacing(20)
-
-        # Heading / description label
-        heading = QLabel(
-            "<h2>Allgemeine Einstellungen</h2>"
-            "<p>Hier können Sie Ihre Einstellungen anpassen.</p>"
-            "<p>dark mode Switch:</p>"
-            "<p>Dauer bis zum Timeout Server:</p>"
-        )
-        heading.setAlignment(Qt.AlignLeft)
-        heading.setStyleSheet(
-            """
-            QLabel {
-                color: #374151;
-                font-size: 20px;
-                font-weight: 600;
-            }
-            """
-        )
-        frame_layout.addWidget(heading)
-        # Add the Dark-Mode checkbox and timeout spin box
-        frame_layout.addWidget(self.chk_darkmode)
-        frame_layout.addWidget(QLabel("Server-Timeout:"))
-        frame_layout.addWidget(self.spn_timeout)
-
-        # TODO: Add real setting controls here …
-
-        # --- bottom button row ------------------------------------------------
-        btn_row = QHBoxLayout()
-        btn_row.addStretch()  # push buttons to the right
-
-        # Helper to reuse the same CSS as main buttons
-        # (import inside the method to avoid circular import at top level)
-        # MainWindow is already defined above; no need to re-import
-
-        def make_button(text: str) -> QPushButton:
-            btn = QPushButton(text)
-            btn.setFixedHeight(48)
-            btn.setStyleSheet(MainWindow._button_style())  # reuse style
-            return btn
-
-        self.btn_apply = make_button("Anwenden")
-        self.btn_reset = make_button("Zurücksetzen")
-        self.btn_cancel = make_button("Abbrechen")
-
-        # Connect apply and reset buttons
-        self.btn_apply.clicked.connect(self.apply_settings)
-        self.btn_reset.clicked.connect(self.reset_settings)
-
-        # Connect Cancel to close the window by default
-        self.btn_cancel.clicked.connect(self.close)
-
-        # Add to layout
-        btn_row.addWidget(self.btn_apply)
-        btn_row.addWidget(self.btn_reset)
-        btn_row.addWidget(self.btn_cancel)
-
-        frame_layout.addLayout(btn_row)
-        # ---------------------------------------------------------------------
-
-        # Add framed content to main window layout
-        main_layout.addWidget(frame)
-
-        # Finalise layout
-        self.setLayout(main_layout)
+    # -------------------------------------------------------------- #
+    # House-keeping: tell MainWindow when we disappear
+    # -------------------------------------------------------------- #
+    def closeEvent(self, event):
+        parent = self.parent()
+        if parent and hasattr(parent, "settings_window"):
+            parent.settings_window = None  # type: ignore
+        super().closeEvent(event)
 # --------------------------------------------------------------------------- #
 # Application entry point
 # --------------------------------------------------------------------------- #
