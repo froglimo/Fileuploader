@@ -1,10 +1,70 @@
 import os
 import sys
 
+# Persistent virtual environment bootstrap in the user's home directory.
+# Creates or reuses ~/.fileuploader_venv and ensures required packages are installed.
+def _ensure_venv_and_reexec():
+    try:
+        import os as _os
+        import sys as _sys
+        import subprocess as _subprocess
+        import venv as _venv
+
+        home = _os.path.expanduser("~")
+        venv_dir = _os.path.join(home, ".fileuploader_venv")
+        if _os.name == "nt":
+            venv_python = _os.path.join(venv_dir, "Scripts", "python.exe")
+        else:
+            venv_python = _os.path.join(venv_dir, "bin", "python")
+
+        required = ["Flask", "requests", "packaging", "PyQt5"]
+
+        def _run_pip(args):
+            cmd = [venv_python, "-m", "pip"] + args
+            try:
+                _subprocess.run(
+                    cmd,
+                    stdout=_subprocess.DEVNULL,
+                    stderr=_subprocess.DEVNULL,
+                    check=False,
+                )
+            except Exception:
+                pass
+
+        # Create venv if missing
+        if not _os.path.exists(venv_python):
+            try:
+                _venv.create(venv_dir, with_pip=True, clear=False)
+            except Exception:
+                # If creation fails, fall back to system interpreter
+                return
+            # Bootstrap pip toolchain and install requirements
+            _run_pip(["install", "--disable-pip-version-check", "-U", "pip", "setuptools", "wheel"])
+            _run_pip(["install", "--disable-pip-version-check"] + required)
+
+        # If not already running inside this venv, re-exec using it
+        in_our_venv = _os.path.abspath(_sys.executable).startswith(_os.path.abspath(venv_dir))
+        already = _os.environ.get("FILEUPLOADER_BOOTSTRAPPED") == "1"
+        if not in_our_venv and not already:
+            _os.environ["FILEUPLOADER_BOOTSTRAPPED"] = "1"
+            # Ensure requirements are present before switch (in case venv existed)
+            _run_pip(["install", "--disable-pip-version-check"] + required)
+            _os.execv(venv_python, [venv_python, _sys.argv[0], *_sys.argv[1:]])
+
+        # If inside our venv, ensure requirements are available
+        if in_our_venv:
+            _run_pip(["install", "--disable-pip-version-check"] + required)
+    except Exception:
+        # Never crash on bootstrap; continue with system environment
+        pass
+
+_ensure_venv_and_reexec()
+
 import sqlite3
 import mimetypes
 import shutil
 import requests
+from packaging.version import Version
 from threading import Thread
 # --------------------------------------------------------------------------- #
 # Minimal Flask application (WSGI) used by the internal background server
@@ -78,8 +138,8 @@ from PyQt5.QtWidgets import (
     QListWidgetItem, QLabel, QMessageBox, QAbstractItemView, QCheckBox, QSpinBox, QStyle,
     QAction
 )
-from PyQt5.QtCore import Qt, QEvent
-from PyQt5.QtGui import QDragEnterEvent, QDropEvent, QIcon, QPixmap, QWindow
+from PyQt5.QtCore import Qt, QEvent, QT_VERSION_STR
+from PyQt5.QtGui import QDragEnterEvent, QDropEvent, QIcon, QPixmap, QWindow, QPalette, QColor
 from PyQt5.QtWidgets import QStyle
 
 import threading
@@ -866,34 +926,50 @@ class SettingsWindow(QWidget):
 
     @staticmethod
     def apply_dark_palette(enable: bool) -> None:
-        """
-        Switch the entire QApplication between light and dark palettes.
-        """
+        """Toggle a dark palette for the running QApplication."""
+        """The implementation is compatible with both PyQt5 and PyQt6."""
         app = QApplication.instance()
-        if app is None:  # safety guard (should never happen in normal runtime)
+        if app is None:      # should never happen in normal runtime
             return
+
+        # -------- Helper lambdas so we can look up enum members safely ----------
+        qt6 = Version(QT_VERSION_STR).major >= 6
+
+        def pal_role(key: str):
+            """Return the correct QPalette role constant for Qt5 / Qt6."""
+            if qt6:
+                return getattr(QPalette.ColorRole, key)
+            return getattr(QPalette, key)
+
+        def gc_color(key: str):
+            """Return the correct Qt GlobalColor constant for Qt5 / Qt6."""
+            if qt6:
+                return getattr(Qt.GlobalColor, key)
+            return getattr(Qt, key)
 
         if enable:
             dark = QPalette()
-            dark.setColor(QPalette.Window, QColor(53, 53, 53))
-            dark.setColor(QPalette.WindowText, Qt.white)
-            dark.setColor(QPalette.Base, QColor(35, 35, 35))
-            dark.setColor(QPalette.AlternateBase, QColor(53, 53, 53))
-            dark.setColor(QPalette.ToolTipBase, Qt.white)
-            dark.setColor(QPalette.ToolTipText, Qt.white)
-            dark.setColor(QPalette.Text, Qt.white)
-            dark.setColor(QPalette.Button, QColor(53, 53, 53))
-            dark.setColor(QPalette.ButtonText, Qt.white)
-            dark.setColor(QPalette.BrightText, Qt.red)
-            dark.setColor(QPalette.Link, QColor(42, 130, 218))
-            dark.setColor(QPalette.Highlight, QColor(42, 130, 218))
-            dark.setColor(QPalette.HighlightedText, Qt.black)
+            dark.setColor(pal_role("Window"), QColor(53, 53, 53))
+            dark.setColor(pal_role("WindowText"), gc_color("white"))
+            dark.setColor(pal_role("Base"), QColor(35, 35, 35))
+            dark.setColor(pal_role("AlternateBase"), QColor(53, 53, 53))
+            dark.setColor(pal_role("ToolTipBase"), gc_color("white"))
+            dark.setColor(pal_role("ToolTipText"), gc_color("white"))
+            dark.setColor(pal_role("Text"), gc_color("white"))
+            dark.setColor(pal_role("Button"), QColor(53, 53, 53))
+            dark.setColor(pal_role("ButtonText"), gc_color("white"))
+            dark.setColor(pal_role("BrightText"), gc_color("red"))
+            dark.setColor(pal_role("Link"), QColor(42, 130, 218))
+            dark.setColor(pal_role("Highlight"), QColor(42, 130, 218))
+            dark.setColor(pal_role("HighlightedText"), gc_color("black"))
+
             app.setPalette(dark)
-            # Optional: keep default tooltip styling in dark mode
+            # Keep default tooltip styling in dark mode
             app.setStyleSheet(
                 "QToolTip { color: #ffffff; background-color: #2a82da; border: 0px; }"
             )
         else:
+            # Revert to the default light palette
             app.setPalette(app.style().standardPalette())
             app.setStyleSheet("")
 
