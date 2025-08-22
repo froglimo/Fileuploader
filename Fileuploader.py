@@ -287,7 +287,10 @@ class FileListWidget(QWidget):
             """
             QLabel {
                 padding: 6px 12px;
-                color: #374151;
+                color: white;
+                background-color: grey;
+                border: 1px solid black;
+                border-radius:15px;
                 font-weight: 600;
             }
             """
