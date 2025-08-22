@@ -75,6 +75,7 @@ from werkzeug.utils import secure_filename
 import io
 import zipfile
 from typing import List
+from packaging.version import Version
 
 app = Flask(__name__)
 
@@ -293,6 +294,11 @@ class FileListWidget(QWidget):
             """
         )
 
+        header_layout = QHBoxLayout()
+        header_layout.addWidget(header_label)
+        header_layout.addStretch()
+        header_layout.addWidget(self.btn_refresh)
+        main_layout.addLayout(header_layout)
         self.list_widget = QListWidget()
         self.list_widget.setSelectionMode(QAbstractItemView.SingleSelection)
         self.list_widget.setStyleSheet(
