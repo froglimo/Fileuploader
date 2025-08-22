@@ -64,7 +64,6 @@ import sqlite3
 import mimetypes
 import shutil
 import requests
-from packaging.version import Version
 from threading import Thread
 # --------------------------------------------------------------------------- #
 # Minimal Flask application (WSGI) used by the internal background server
@@ -140,7 +139,7 @@ from PyQt5.QtWidgets import (
 )
 from PyQt5.QtCore import Qt, QEvent, QT_VERSION_STR
 from PyQt5.QtGui import QDragEnterEvent, QDropEvent, QIcon, QPixmap, QWindow, QPalette, QColor
-from PyQt5.QtWidgets import QStyle
+from PyQt5.QtWidgets import QStyle, QSizePolicy
 
 import threading
 
@@ -276,13 +275,29 @@ class FileListWidget(QWidget):
         frame_layout.setSpacing(20)
         main_layout.setContentsMargins(0, 0, 0, 0)
         header_layout = QHBoxLayout()
-        header_layout.setContentsMargins(10, 10, 10, 10)
+        header_layout.setContentsMargins(0, 0, 0, 0)
         self.btn_refresh = QPushButton()
         style = QApplication.style() if hasattr(QApplication, 'style') else None
         if style:
             self.btn_refresh.setIcon(style.standardIcon(QStyle.StandardPixmap.SP_BrowserReload))
         self.btn_refresh.setToolTip("Dateiliste aktualisieren")
-        header_layout.addWidget(QLabel("Gespeicherte Dateien:"))
+
+        header_label = QLabel("Gespeicherte Dateien:")
+        header_label.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
+        header_label.setStyleSheet(
+            """
+            QLabel {
+                background-color: #ffffff;
+                border: 1px solid #e5e7eb;
+                border-radius: 15px;
+                padding: 6px 12px;
+                color: #374151;
+                font-weight: 600;
+            }
+            """
+        )
+
+        header_layout.addWidget(header_label)
         header_layout.addStretch()
         header_layout.addWidget(self.btn_refresh)
         main_layout.addLayout(header_layout)
@@ -291,10 +306,12 @@ class FileListWidget(QWidget):
         self.list_widget.setStyleSheet(
             """
             QListWidget {
-                border: none;
+                border-radius: 15px;
                 font-size: 14px;
                 color: #374151;
                 background-color: #ffffff;
+                margin: 2px 4px;
+                padding: 8px 12px;
             }
             QListWidget::item {
                 padding: 8px 12px;
@@ -302,7 +319,7 @@ class FileListWidget(QWidget):
                 margin: 2px 4px;
             }
             QListWidget::item:selected {
-                background-color: #e0e7ff;
+                background-color: green;
             }
         """
         )
@@ -885,28 +902,6 @@ class MainWindow(QMainWindow):
 # --------------------------------------------------------------------------- #
 # Einstellungen Fenster (SettingsWindow)
 # --------------------------------------------------------------------------- #
-from PyQt5.QtWidgets import QWidget, QFrame, QLabel, QVBoxLayout
-
-from PyQt5.QtWidgets import (
-    QApplication, QWidget, QVBoxLayout, QFrame, QLabel, QCheckBox, QSpinBox, QHBoxLayout
-)
-from PyQt5.QtCore import Qt
-from PyQt5.QtGui import QPalette, QColor
-
-from PyQt5.QtWidgets import (
-    QApplication,
-    QWidget,
-    QVBoxLayout,
-    QFrame,
-    QLabel,
-    QCheckBox,
-    QSpinBox,
-    QHBoxLayout,
-    QPushButton,
-    QMessageBox,
-)
-from PyQt5.QtCore import Qt
-from PyQt5.QtGui import QPalette, QColor
 
 
 class SettingsWindow(QWidget):
