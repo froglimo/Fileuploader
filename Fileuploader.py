@@ -275,18 +275,17 @@ class FileListWidget(QWidget):
         frame_layout.setContentsMargins(20, 20, 20, 20)
         frame_layout.setSpacing(20)
         main_layout.setContentsMargins(0, 0, 0, 0)
+        main_layout.addWidget(frame)
         self.btn_refresh = QPushButton()
         style = QApplication.style() if hasattr(QApplication, 'style') else None
         if style:
                 self.btn_refresh.setIcon(style.standardIcon(QStyle.StandardPixmap.SP_BrowserReload))
                 self.btn_refresh.setToolTip("Dateiliste aktualisieren")
-        header_label = QLabel("Gespeicherte Dateien:")
+        header_label = QLabel("Gespeicherte Dateien")
         header_label.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
         header_label.setStyleSheet(
             """
             QLabel {
-                border: 1px solid #e5e7eb;
-                border-radius: 15px;
                 padding: 6px 12px;
                 color: #374151;
                 font-weight: 600;
@@ -295,10 +294,11 @@ class FileListWidget(QWidget):
         )
 
         header_layout = QHBoxLayout()
+        header_layout.setContentsMargins(0, 0, 0, 0)
         header_layout.addWidget(header_label)
         header_layout.addStretch()
         header_layout.addWidget(self.btn_refresh)
-        main_layout.addLayout(header_layout)
+        frame_layout.addLayout(header_layout)
         self.list_widget = QListWidget()
         self.list_widget.setSelectionMode(QAbstractItemView.SingleSelection)
         self.list_widget.setStyleSheet(
@@ -321,7 +321,7 @@ class FileListWidget(QWidget):
             }
         """
         )
-        main_layout.addWidget(self.list_widget)
+        frame_layout.addWidget(self.list_widget)
         btn_layout = QHBoxLayout()
         self.btn_add = QPushButton()
         if style:
@@ -339,7 +339,7 @@ class FileListWidget(QWidget):
         btn_layout.addWidget(self.btn_delete)
         btn_layout.addWidget(self.btn_download)
         btn_layout.addStretch()
-        main_layout.addLayout(btn_layout)
+        frame_layout.addLayout(btn_layout)
 
     def clear_list(self):
         self.list_widget.clear()
