@@ -146,17 +146,24 @@ import threading
 
 def run_server():
     """
-    Start the internal Flask server defined in this module.
-    Running in a dedicated thread keeps the GUI responsive.
+    Start the external server application (ServerFileuploader) in a background thread.
     """
-    app.run(port=5001, use_reloader=False)  # use_reloader=False is important for threads
+    try:
+        from ServerFileuploader import start_server
+        start_server(host="127.0.0.1", port=5000, debug=False)
+    except Exception as exc:
+        print(f"Failed to start server: {exc}")
 
 # Start the server in a background thread
 server_thread = threading.Thread(target=run_server, daemon=True)
 server_thread.start()
 
 DB_NAME = "file_manager.db"
-UPLOAD_ENDPOINT = "http://localhost:5001/upload"
+SERVER_BASE = "http://127.0.0.1:5000"
+UPLOAD_ENDPOINT = f"{SERVER_BASE}/api/upload"
+FILES_ENDPOINT = f"{SERVER_BASE}/api/files"
+DOWNLOAD_ENDPOINT_TEMPLATE = f"{SERVER_BASE}/files/{{id}}/download"
+DELETE_ENDPOINT_TEMPLATE = f"{SERVER_BASE}/files/{{id}}/delete"
 
 class _CallableEvent(QEvent):
     def __init__(self, fn):
@@ -429,38 +436,48 @@ class MainWindow(QMainWindow):
 
     def upload_to_server(self, files):
         """
-        POST each file to a remote HTTP endpoint.
-        Runs in a background thread to avoid blocking UI.
+        Upload provided files to the external server API in one request.
         """
-        successes = 0
-        for path in files:
-            if not os.path.isfile(path):
-                continue
-            mime, _ = mimetypes.guess_type(path)
-            mime = mime or "application/octet-stream"
-            with open(path, "rb") as fh:
-                files_payload = {
-                    "file": (os.path.basename(path), fh, mime)
-                }
-                try:
-                    resp = requests.post(UPLOAD_ENDPOINT, files=files_payload)
-                    resp.raise_for_status()
-                    successes += 1
-                except requests.RequestException as exc:
-                    # report per-file failures on the GUI thread
-                    self.run_on_ui_thread(
-                        lambda: QMessageBox.warning(
-                            self, "Upload Failed",
-                            f"Failed to upload '{path}' to server:\n{exc}"
-                        )
-                    )
-        if successes:
+        sent_files = []
+        file_handles = []
+        try:
+            for path in files:
+                if not os.path.isfile(path):
+                    continue
+                mime, _ = mimetypes.guess_type(path)
+                mime = mime or "application/octet-stream"
+                fh = open(path, "rb")
+                file_handles.append(fh)
+                sent_files.append(("files", (os.path.basename(path), fh, mime)))
+
+            if not sent_files:
+                self.run_on_ui_thread(lambda: QMessageBox.warning(self, "Upload", "No valid files to upload."))
+                return
+
+            resp = requests.post(UPLOAD_ENDPOINT, files=sent_files, timeout=self.server_timeout)
+            resp.raise_for_status()
+            try:
+                data = resp.json()
+                saved = data.get("saved", 0)
+            except Exception:
+                saved = 0
+
             self.run_on_ui_thread(
-                lambda: QMessageBox.information(
-                    self, "Upload Complete",
-                    f"Successfully uploaded {successes} file(s) to server."
+                lambda: (
+                    QMessageBox.information(self, "Upload Complete", f"Successfully uploaded {saved or len(sent_files)} file(s) to server."),
+                    self.load_files()
                 )
             )
+        except requests.RequestException as exc:
+            self.run_on_ui_thread(
+                lambda: QMessageBox.warning(self, "Upload Failed", f"Server error during upload:\n{exc}")
+            )
+        finally:
+            for fh in file_handles:
+                try:
+                    fh.close()
+                except Exception:
+                    pass
 
     def run_on_ui_thread(self, fn):
         """
@@ -491,7 +508,6 @@ class MainWindow(QMainWindow):
         self.drag_drop = DragDropWidget()
         def on_files_dropped(files):
             self.handle_files_upload(files)
-            Thread(target=self.upload_to_server, args=(files,), daemon=True).start()
         self.drag_drop.on_files_dropped = on_files_dropped
         left_vbox.addWidget(self.btn_upload)
         left_vbox.addWidget(self.btn_download_all)
@@ -649,39 +665,21 @@ class MainWindow(QMainWindow):
         valid = [f for f in files if os.path.splitext(f)[1].lower() in allowed]
 
         if not valid:
-            QMessageBox.warning(
-                self, "Unsupported Files", "No supported file types selected."
-            )
+            QMessageBox.warning(self, "Unsupported Files", "No supported file types selected.")
             return
 
-        cur = self.conn.cursor()
-        for path in valid:
-            try:
-                with open(path, "rb") as fh:
-                    data = fh.read()
-                filename = os.path.basename(path)
-                mime, _ = mimetypes.guess_type(filename)
-                if mime is None:
-                    ext = os.path.splitext(filename)[1].lower()
-                    mime = "application/msword" if ext in {".doc", ".docx"} else "application/octet-stream"
-
-                cur.execute(
-                    "INSERT INTO files(filename, filetype, data) VALUES(?,?,?)",
-                    (filename, mime, data),
-                )
-            except Exception as exc:
-                QMessageBox.warning(self, "Error", f"Failed to upload '{path}'.\n{exc}")
-
-        self.conn.commit()
-        self.load_files()
+        Thread(target=self.upload_to_server, args=(valid,), daemon=True).start()
 
     def load_files(self):
         self.file_widget.clear_list()
-        cur = self.conn.cursor()
-        for file_id, fname, ftype in cur.execute(
-            "SELECT id, filename, filetype FROM files ORDER BY id DESC"
-        ):
-            self.file_widget.add_file_item(file_id, fname, ftype)
+        try:
+            resp = requests.get(FILES_ENDPOINT, timeout=self.server_timeout)
+            resp.raise_for_status()
+            data = resp.json()
+            for f in data.get("files", []):
+                self.file_widget.add_file_item(f["id"], f["original_filename"], f.get("content_type") or "application/octet-stream")
+        except requests.RequestException as exc:
+            QMessageBox.warning(self, "Server Error", f"Could not fetch file list from server.\n{exc}")
 
     def delete_selected_file(self):
         file_id = self.file_widget.selected_file_id()
@@ -697,10 +695,12 @@ class MainWindow(QMainWindow):
             )
             == QMessageBox.Yes
         ):
-            cur = self.conn.cursor()
-            cur.execute("DELETE FROM files WHERE id=?", (file_id,))
-            self.conn.commit()
-            self.load_files()
+            try:
+                resp = requests.post(DELETE_ENDPOINT_TEMPLATE.format(id=file_id), timeout=self.server_timeout)
+                resp.raise_for_status()
+                self.load_files()
+            except requests.RequestException as exc:
+                QMessageBox.warning(self, "Fehler", f"Server-Fehler beim Löschen:\n{exc}")
 
     def download_selected_file(self):
         file_id = self.file_widget.selected_file_id()
@@ -708,24 +708,32 @@ class MainWindow(QMainWindow):
             QMessageBox.information(self, "Keine Auswahl", "Bitte Datei auswählen.")
             return
 
-        cur = self.conn.cursor()
-        cur.execute("SELECT filename, data FROM files WHERE id=?", (file_id,))
-        row = cur.fetchone()
-        if not row:
-            QMessageBox.warning(self, "Fehler", "Datei existiert nicht.")
+        # Ask server for file name for default save name
+        default_name = "downloaded_file"
+        try:
+            resp_list = requests.get(FILES_ENDPOINT, timeout=self.server_timeout)
+            resp_list.raise_for_status()
+            files = {f["id"]: f for f in resp_list.json().get("files", [])}
+            info = files.get(file_id)
+            if info and info.get("original_filename"):
+                default_name = info["original_filename"]
+        except Exception:
+            pass
+
+        save_path, _ = QFileDialog.getSaveFileName(self, "Speichern unter …", default_name, "All Files (*)")
+        if not save_path:
             return
 
-        filename, blob = row
-        save_path, _ = QFileDialog.getSaveFileName(
-            self, "Speichern unter …", filename, "All Files (*)"
-        )
-        if save_path:
-            try:
-                with open(save_path, "wb") as fh:
-                    fh.write(blob)
-                QMessageBox.information(self, "Erfolg", f"Datei gespeichert: {save_path}")
-            except Exception as exc:
-                QMessageBox.warning(self, "Error", f"Speichern fehlgeschlagen.\n{exc}")
+        try:
+            with requests.get(DOWNLOAD_ENDPOINT_TEMPLATE.format(id=file_id), stream=True, timeout=self.server_timeout) as r:
+                r.raise_for_status()
+                with open(save_path, "wb") as f:
+                    for chunk in r.iter_content(chunk_size=8192):
+                        if chunk:
+                            f.write(chunk)
+            QMessageBox.information(self, "Erfolg", f"Datei gespeichert: {save_path}")
+        except requests.RequestException as exc:
+            QMessageBox.warning(self, "Error", f"Download fehlgeschlagen.\n{exc}")
 
     # -------------------------- Database operations ----------------------- #
     def change_database_location(self):
