@@ -85,7 +85,7 @@ INDEX_TEMPLATE = """
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
-  <title>{{ app_name }}</title>
+  <title>Fileuploader WebUI</title>
   <style>
   html {
       font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
@@ -98,6 +98,16 @@ INDEX_TEMPLATE = """
     font-size: 24px;
     font-weight: bold;
     color: green;
+    background-color:grey;
+    padding: 8px;
+  }
+  
+  h2 {
+    font-size: 20px;
+    font-weight: bold;
+    color: #e8e8e8;
+    padding:8px;
+    border-bottom: 2px solid green;
   }
   
   button {
