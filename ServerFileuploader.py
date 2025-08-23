@@ -8,7 +8,7 @@ from typing import Iterable
 
 from flask import (
     Flask, request, redirect, url_for, render_template_string,
-    send_file, abort, flash
+    send_file, abort, flash, jsonify
 )
 from werkzeug.utils import secure_filename
 from io import BytesIO
@@ -276,9 +276,88 @@ def delete_file(file_id: int):
     return redirect(url_for("index"))
 
 # --------------------------
+# JSON API for desktop client
+# --------------------------
+@app.route("/api/upload", methods=["POST"])
+def api_upload():
+    if "files" not in request.files:
+        return jsonify(error="No file part in the request."), 400
+    files = request.files.getlist("files")
+    if not files:
+        return jsonify(error="No files selected."), 400
+
+    saved_count = 0
+    rejected = []
+    conn = get_db()
+
+    for f in files:
+        if f.filename == "":
+            continue
+        filename = secure_filename(f.filename)
+        if not filename or not ext_ok(filename):
+            rejected.append(f.filename or "(unnamed)")
+            continue
+
+        data = f.read()
+        if not data:
+            rejected.append((filename or "(unnamed)") + " (empty)")
+            continue
+
+        digest = sha256_bytes(data)
+        stored_name = f"{digest[:12]}_{filename}"
+        uploaded_at = datetime.utcnow().isoformat(timespec="seconds") + "Z"
+
+        conn.execute(
+            """
+            INSERT INTO files (original_filename, stored_filename, content_type, size_bytes, sha256, uploaded_at, data)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                filename,
+                stored_name,
+                f.mimetype,
+                len(data),
+                digest,
+                uploaded_at,
+                sqlite3.Binary(data),
+            ),
+        )
+        saved_count += 1
+
+    conn.commit()
+    conn.close()
+
+    return jsonify(saved=saved_count, rejected=rejected)
+
+@app.route("/api/files", methods=["GET"])
+def api_files():
+    conn = get_db()
+    rows = conn.execute(
+        "SELECT id, original_filename, content_type, size_bytes, sha256, uploaded_at FROM files ORDER BY id DESC"
+    ).fetchall()
+    conn.close()
+    files = [
+        {
+            "id": r["id"],
+            "original_filename": r["original_filename"],
+            "content_type": r["content_type"],
+            "size_bytes": r["size_bytes"],
+            "sha256": r["sha256"],
+            "uploaded_at": r["uploaded_at"],
+        }
+        for r in rows
+    ]
+    return jsonify(files=files)
+
+# --------------------------
 # Main
 # --------------------------
-if __name__ == "__main__":
+
+def start_server(host: str = "127.0.0.1", port: int = 5000, debug: bool = False):
+    """Start the Flask server; suitable for being called from another process/thread."""
     init_db()
-    # Run on localhost only; visit http://127.0.0.1:5000
-    app.run(host="127.0.0.1", port=5000, debug=True)
+    # Avoid reloader when starting from a background thread
+    app.run(host=host, port=port, debug=debug, use_reloader=False)
+
+if __name__ == "__main__":
+    start_server(host="127.0.0.1", port=5000, debug=True)
