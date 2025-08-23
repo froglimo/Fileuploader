@@ -87,6 +87,28 @@ INDEX_TEMPLATE = """
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <title>{{ app_name }}</title>
   <style>
+  html {
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+      margin: 0;
+      background: #0b0c10;
+      color: #e8e8e8;
+  }
+  
+  h1 {
+    font-size: 24px;
+    font-weight: bold;
+    color: green;
+  }
+  
+  button {
+      padding: 10px 14px;
+      border: 0;
+      border-radius: 8px;
+      background: green;
+      color: white;
+      font-weight: 600;
+      cursor: pointer;
+  }
   </style>
 </head>
 <body>
