@@ -87,22 +87,6 @@ INDEX_TEMPLATE = """
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <title>{{ app_name }}</title>
   <style>
-    html, body { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; margin: 0; background:#0b0c10; color:#e8e8e8; }
-    header { padding: 24px; border-bottom: 1px solid #222; }
-    main { padding: 24px; max-width: 900px; margin: 0 auto; }
-    .card { background: #111317; border: 1px solid #1e1f24; border-radius: 12px; padding: 20px; }
-    .row { display: flex; gap: 16px; flex-wrap: wrap; align-items: center; }
-    input[type=file] { padding: 12px; background:#0f1115; color:#e8e8e8; border:1px dashed #323232; border-radius: 8px; width: 100%; }
-    button { padding: 10px 14px; border: 0; border-radius: 8px; background:#2c67ff; color:white; font-weight:600; cursor:pointer; }
-    button:disabled { opacity: .6; cursor:not-allowed; }
-    table { width: 100%; border-collapse: collapse; margin-top: 18px; }
-    th, td { padding: 10px 8px; border-bottom: 1px solid #1f2127; font-size: 14px; word-break: break-all; }
-    .muted { color:#b9b9b9; font-size: 12px; }
-    .pill { font-size: 12px; padding: 2px 8px; border-radius: 999px; background:#1e2433; display:inline-block; }
-    .flash { background:#1a2a1a; border:1px solid #2e4b2e; padding:10px 12px; border-radius:8px; color:#cfe9cf; margin: 12px 0; }
-    a { color:#8db1ff; text-decoration: none; }
-    a:hover { text-decoration: underline; }
-    form.inline { display: inline; }
   </style>
 </head>
 <body>
