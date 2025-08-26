@@ -87,27 +87,12 @@ INDEX_TEMPLATE = """
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <title>Fileuploader WebUI</title>
   <style>
-    body { margin: 0; }
-    header { padding: 8px 16px; border-bottom: 1px solid #1f2227; }
-    main { max-width: 1100px; margin: 0 auto; padding: 16px; }
-    .muted { color: #a0a7b4; font-size: 0.9rem; }
-    .card { background: #0f1216; border: 1px solid #1f2227; border-radius: 10px; padding: 16px; }
-    .table-wrap { overflow-x: auto; border: 1px solid #1f2227; border-radius: 8px; }
-    table { width: 100%; border-collapse: separate; border-spacing: 0; }
-    thead th { position: sticky; top: 0; z-index: 1; background: #0f1216; text-align: left; font-weight: 600; border-bottom: 1px solid #1f2227; }
-    th, td { padding: 10px 12px; vertical-align: middle; }
-    tbody tr { border-bottom: 1px solid #1a1d23; }
-    tbody tr:hover { background: #12161a; }
-    td.num { text-align: right; white-space: nowrap; }
-    td.filename { max-width: 420px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    td.nowrap { white-space: nowrap; }
-    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12px; }
-    .pill { display: inline-block; background: rgba(0,255,0,0.1); color: #9eff9e; border: 1px solid rgba(0,255,0,0.25); padding: 2px 8px; border-radius: 9999px; font-size: 12px; }
-    a { color: #7cc7ff; text-decoration: none; }
-    a:hover { text-decoration: underline; }
-    .inline { display: inline; }
-    td.actions a { margin-right: 8px; }
-    td.actions form.inline { margin-left: 4px; }
+  .card {
+    background: #0f1216;
+    border: 1px solid #1f2227;
+    border-radius: 10px;
+    padding: 16px;
+  }
   </style>
 </head>
 <body>
