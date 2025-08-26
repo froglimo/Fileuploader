@@ -87,38 +87,27 @@ INDEX_TEMPLATE = """
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <title>Fileuploader WebUI</title>
   <style>
-  html {
-      font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
-      margin: 0;
-      background: #0b0c10;
-      color: #e8e8e8;
-  }
-  
-  h1 {
-    font-size: 24px;
-    font-weight: bold;
-    color: green;
-    background-color:grey;
-    padding: 8px;
-  }
-  
-  h2 {
-    font-size: 20px;
-    font-weight: bold;
-    color: #e8e8e8;
-    padding:8px;
-    border-bottom: 2px solid green;
-  }
-  
-  button {
-      padding: 10px 14px;
-      border: 0;
-      border-radius: 8px;
-      background: green;
-      color: white;
-      font-weight: 600;
-      cursor: pointer;
-  }
+    body { margin: 0; }
+    header { padding: 8px 16px; border-bottom: 1px solid #1f2227; }
+    main { max-width: 1100px; margin: 0 auto; padding: 16px; }
+    .muted { color: #a0a7b4; font-size: 0.9rem; }
+    .card { background: #0f1216; border: 1px solid #1f2227; border-radius: 10px; padding: 16px; }
+    .table-wrap { overflow-x: auto; border: 1px solid #1f2227; border-radius: 8px; }
+    table { width: 100%; border-collapse: separate; border-spacing: 0; }
+    thead th { position: sticky; top: 0; z-index: 1; background: #0f1216; text-align: left; font-weight: 600; border-bottom: 1px solid #1f2227; }
+    th, td { padding: 10px 12px; vertical-align: middle; }
+    tbody tr { border-bottom: 1px solid #1a1d23; }
+    tbody tr:hover { background: #12161a; }
+    td.num { text-align: right; white-space: nowrap; }
+    td.filename { max-width: 420px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    td.nowrap { white-space: nowrap; }
+    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12px; }
+    .pill { display: inline-block; background: rgba(0,255,0,0.1); color: #9eff9e; border: 1px solid rgba(0,255,0,0.25); padding: 2px 8px; border-radius: 9999px; font-size: 12px; }
+    a { color: #7cc7ff; text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    .inline { display: inline; }
+    td.actions a { margin-right: 8px; }
+    td.actions form.inline { margin-left: 4px; }
   </style>
 </head>
 <body>
@@ -137,55 +126,56 @@ INDEX_TEMPLATE = """
     {% endwith %}
 
     <div class="card">
-      <h2 style="margin-top:0;">Upload files</h2>
-      <form class="row" action="{{ url_for('upload') }}" method="post" enctype="multipart/form-data">
+    <h2>Upload files</h2>
+    <form class="row" action="{{ url_for('upload') }}" method="post" enctype="multipart/form-data">
         <input type="file" name="files" multiple required>
         <button type="submit">Upload</button>
-      </form>
-      <p class="muted" style="margin-top:8px;">
+    </form>
+    <p class="muted" style="margin-top:8px;">
         Allowed: images, documents, archives · Max request: {{ max_size_mb }} MB
-      </p>
+    </p>
     </div>
 
     <div class="card" style="margin-top:16px;">
-      <h2 style="margin-top:0;">Stored files ({{ files|length }})</h2>
-      {% if files %}
-      <table>
-        <thead>
-          <tr>
-            <th>ID</th>
-            <th>Filename</th>
-            <th>Type</th>
-            <th>Size</th>
-            <th>SHA-256</th>
-            <th>Uploaded</th>
-            <th>Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-        {% for f in files %}
-          <tr>
-            <td>{{ f.id }}</td>
-            <td>{{ f.original_filename }}</td>
-            <td><span class="pill">{{ f.content_type or "n/a" }}</span></td>
-            <td>{{ "{:,}".format(f.size_bytes) }} B</td>
-            <td class="muted">{{ f.sha256[:16] }}…</td>
-            <td class="muted">{{ f.uploaded_at }}</td>
-            <td>
-              <a href="{{ url_for('download_file', file_id=f.id) }}">Download</a>
-               · 
-              <form class="inline" action="{{ url_for('delete_file', file_id=f.id) }}" method="post" onsubmit="return confirm('Delete this file?');">
-                <button type="submit">Delete</button>
-              </form>
-            </td>
-          </tr>
-        {% endfor %}
-        </tbody>
-      </table>
-      {% else %}
-        <div class="muted">Nothing here yet. Upload something.</div>
-      {% endif %}
+    <h2>Stored files ({{ files|length }})</h2>
+    {% if files %}
+    <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Filename</th>
+          <th>Type</th>
+          <th>Size</th>
+          <th>SHA-256</th>
+          <th>Uploaded</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+      {% for f in files %}
+        <tr>
+          <td class="num">{{ f.id }}</td>
+          <td class="filename" title="{{ f.original_filename }}">{{ f.original_filename }}</td>
+          <td><span class="pill">{{ f.content_type or "n/a" }}</span></td>
+          <td class="num">{{ "{:,}".format(f.size_bytes) }} B</td>
+          <td class="mono muted" title="{{ f.sha256 }}">{{ f.sha256[:16] }}…</td>
+          <td class="muted nowrap">{{ f.uploaded_at }}</td>
+          <td class="actions">
+            <a href="{{ url_for('download_file', file_id=f.id) }}">Download</a>
+            <form class="inline" action="{{ url_for('delete_file', file_id=f.id) }}" method="post" onsubmit="return confirm('Delete this file?');">
+              <button type="submit">Delete</button>
+            </form>
+          </td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
     </div>
+    {% else %}
+        <div class="muted">Nothing here yet. Upload something.</div>
+    {% endif %}
+    </div> 
   </main>
 </body>
 </html>
@@ -369,11 +359,11 @@ def api_files():
 # Main
 # --------------------------
 
-def start_server(host: str = "127.0.0.1", port: int = 5000, debug: bool = False):
+def start_server(host: str = "0.0.0.0", port: int = 5000, debug: bool = False):
     """Start the Flask server; suitable for being called from another process/thread."""
     init_db()
     # Avoid reloader when starting from a background thread
     app.run(host=host, port=port, debug=debug, use_reloader=False)
 
 if __name__ == "__main__":
-    start_server(host="127.0.0.1", port=5000, debug=True)
+    start_server(host="0.0.0.0", port=5000, debug=True)
