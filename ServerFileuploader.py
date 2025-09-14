@@ -87,11 +87,88 @@ INDEX_TEMPLATE = """
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <title>Fileuploader WebUI</title>
   <style>
+  html {
+    background: #2c3035;
+    line-height: 1.4;
+    margin: 0;
+    padding: 0;
+    font-family: system-ui, sans-serif;
+  }
+  
+  h1 {
+    font-size: 24px;
+    font-weight: 600;
+    background-color:lightgrey;
+    padding: 10px;
+    margin:0;
+    border-radius:20px;
+  }
+  
+  div {
+    background: lightgreen;
+    border: none;
+    border-radius: 5px;
+    padding: 10px;
+    margin:10px;
+  }
+  
   .card {
-    background: #0f1216;
+    background: green;
     border: 1px solid #1f2227;
     border-radius: 10px;
-    padding: 16px;
+    padding-bottom: 15px;
+    padding-top: 10px;
+    padding-left:5px;
+    padding-right:5px;
+    font-family: system-ui, sans-serif;
+  }
+  
+  button {
+    background: #3a3f47;
+    border: none;
+    border-radius: 5px;
+    color: white;
+    cursor: pointer;
+    font-size: 14px;
+    padding: 8px 12px;
+  }
+  button:hover {
+    background: #50575f;
+  }
+  button:active {
+    background: #2c3035;
+  }
+  button:disabled {
+    background: #2c3035;
+    cursor: not-allowed;
+    opacity: 0.6;
+  }
+  
+  input {
+    background: #3a3f47;
+    border: none;
+    border-radius: 5px;
+    color: white;
+    cursor: pointer;
+    font-size: 14px;
+    padding: 8px 12px;
+  }
+  input:hover {
+    background: #50575f;
+  }
+  input:active {
+    background: #2c3035;
+  }
+  input:disabled {
+    background: #2c3035;
+    cursor: not-allowed;
+    opacity: 0.6;
+  }
+  
+  h2 {
+    margin-bottom: 10px;
+    font-family: system-ui, sans-serif;
+    font-weigh: 600;
   }
   </style>
 </head>
@@ -103,20 +180,19 @@ INDEX_TEMPLATE = """
 
   <main>
     {% with messages = get_flashed_messages() %}
-      {% if messages %}
-        {% for m in messages %}
-          <div class="flash">{{ m }}</div>
-        {% endfor %}
-      {% endif %}
-    {% endwith %}
-
-    <div class="card">
+        {% if messages %}
+            {% for m in messages %}
+            <div class="flash">{{ m }}</div>
+            {% endfor %}
+        {% endif %}
+        {% endwith %}
+    <div class="card stack">
     <h2>Upload files</h2>
     <form class="row" action="{{ url_for('upload') }}" method="post" enctype="multipart/form-data">
         <input type="file" name="files" multiple required>
         <button type="submit">Upload</button>
     </form>
-    <p class="muted" style="margin-top:8px;">
+    <p class="muted">
         Allowed: images, documents, archives · Max request: {{ max_size_mb }} MB
     </p>
     </div>
@@ -125,42 +201,42 @@ INDEX_TEMPLATE = """
     <h2>Stored files ({{ files|length }})</h2>
     {% if files %}
     <div class="table-wrap">
-    <table>
-      <thead>
-        <tr>
-          <th>ID</th>
-          <th>Filename</th>
-          <th>Type</th>
-          <th>Size</th>
-          <th>SHA-256</th>
-          <th>Uploaded</th>
-          <th>Actions</th>
-        </tr>
-      </thead>
-      <tbody>
-      {% for f in files %}
-        <tr>
-          <td class="num">{{ f.id }}</td>
-          <td class="filename" title="{{ f.original_filename }}">{{ f.original_filename }}</td>
-          <td><span class="pill">{{ f.content_type or "n/a" }}</span></td>
-          <td class="num">{{ "{:,}".format(f.size_bytes) }} B</td>
-          <td class="mono muted" title="{{ f.sha256 }}">{{ f.sha256[:16] }}…</td>
-          <td class="muted nowrap">{{ f.uploaded_at }}</td>
-          <td class="actions">
-            <a href="{{ url_for('download_file', file_id=f.id) }}">Download</a>
-            <form class="inline" action="{{ url_for('delete_file', file_id=f.id) }}" method="post" onsubmit="return confirm('Delete this file?');">
-              <button type="submit">Delete</button>
-            </form>
-          </td>
-        </tr>
-      {% endfor %}
-      </tbody>
-    </table>
+        <table>
+        <thead>
+            <tr>
+            <th>ID</th>
+            <th>Filename</th>
+            <th>Type</th>
+            <th>Size</th>
+            <th>SHA-256</th>
+            <th>Uploaded</th>
+            <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+        {% for f in files %}
+            <tr>
+            <td class="num">{{ f.id }}</td>
+            <td class="filename" title="{{ f.original_filename }}">{{ f.original_filename }}</td>
+            <td><span class="pill">{{ f.content_type or "n/a" }}</span></td>
+            <td class="num">{{ "{:,}".format(f.size_bytes) }} B</td>
+            <td class="mono muted" title="{{ f.sha256 }}">{{ f.sha256[:16] }}…</td>
+            <td class="muted nowrap">{{ f.uploaded_at }}</td>
+            <td class="actions">
+                <a href="{{ url_for('download_file', file_id=f.id) }}">Download</a>
+                <form class="inline" action="{{ url_for('delete_file', file_id=f.id) }}" method="post" onsubmit="return confirm('Delete this file?');">
+                <button type="submit" class="btn btn-danger" aria-label="Delete file {{ f.original_filename }}">Delete</button>
+                </form>
+            </td>
+            </tr>
+        {% endfor %}
+        </tbody>
+        </table>
     </div>
     {% else %}
         <div class="muted">Nothing here yet. Upload something.</div>
     {% endif %}
-    </div> 
+    </div>
   </main>
 </body>
 </html>
