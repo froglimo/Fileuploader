@@ -1055,11 +1055,9 @@ class SettingsWindow(QWidget):
         self.btn_cancel = _make_btn("Abbrechen")
 
         self.btn_apply.clicked.connect(self.apply_settings)
-        self.btn_reset.clicked.connect(self.reset_settings)
         self.btn_cancel.clicked.connect(self.close)
 
         btn_row.addWidget(self.btn_apply)
-        btn_row.addWidget(self.btn_reset)
         btn_row.addWidget(self.btn_cancel)
         frame_layout.addLayout(btn_row)
 
