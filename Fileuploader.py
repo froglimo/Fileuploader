@@ -1052,7 +1052,6 @@ class SettingsWindow(QWidget):
             return btn
 
         self.btn_apply = _make_btn("Anwenden")
-        self.btn_reset = _make_btn("Zurücksetzen")
         self.btn_cancel = _make_btn("Abbrechen")
 
         self.btn_apply.clicked.connect(self.apply_settings)
