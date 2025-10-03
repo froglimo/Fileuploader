@@ -5,5 +5,4 @@
 <p>Option 1: https://apps.microsoft.com/detail/9NRWMJP3717K?hl=neutral&gl=DE&ocid=pdpshare</p>
 <p>Option 2: https://apps.microsoft.com/detail/9PNRBTZXMB4Z?hl=neutral&gl=DE&ocid=pdpshare</p>
 <p>Get it here: Linux </p>
-<p>sudo or root YourPaketManager install python3.xx</p>
-
+<p>sudo or doas Username YourPaketManager install python3.xx</p>

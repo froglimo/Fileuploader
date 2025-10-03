@@ -199,7 +199,7 @@ class AutorWindow(QWidget):
         label = QLabel(
             "<h2>Max Krebs</h2>"
             "<p><b>E-Mail:</b> melvis@posteo.de</p>"
-            "<p>© Release 25.06.2024</p>"
+            "<p>© Release 25.06.2025</p>"
             "<p>Mit Liebe gecodet durch Max Krebs</p>"
         )
         label.setAlignment(Qt.AlignmentFlag.AlignCenter)
