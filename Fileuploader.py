@@ -58,7 +58,9 @@ def _ensure_venv_and_reexec():
         # Never crash on bootstrap; continue with system environment
         pass
 
-_ensure_venv_and_reexec()
+# Allow tests or embedded environments to skip bootstrapping
+if os.environ.get("FILEUPLOADER_SKIP_BOOTSTRAP") != "1":
+    _ensure_venv_and_reexec()
 
 import sqlite3
 import mimetypes
@@ -154,9 +156,10 @@ def run_server():
     except Exception as exc:
         print(f"Failed to start server: {exc}")
 
-# Start the server in a background thread
-server_thread = threading.Thread(target=run_server, daemon=True)
-server_thread.start()
+# Start the server in a background thread (skip during tests if requested)
+if os.environ.get("FILEUPLOADER_NO_SERVER") != "1":
+    server_thread = threading.Thread(target=run_server, daemon=True)
+    server_thread.start()
 
 DB_NAME = "file_manager.db"
 SERVER_BASE = "http://127.0.0.1:5000"
