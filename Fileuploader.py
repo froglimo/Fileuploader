@@ -443,13 +443,19 @@ class MainWindow(QMainWindow):
         """
         sent_files = []
         file_handles = []
+        skipped = []
         try:
             for path in files:
                 if not os.path.isfile(path):
+                    skipped.append((path, "not a file"))
                     continue
                 mime, _ = mimetypes.guess_type(path)
                 mime = mime or "application/octet-stream"
-                fh = open(path, "rb")
+                try:
+                    fh = open(path, "rb")
+                except OSError as e:
+                    skipped.append((path, str(e)))
+                    continue
                 file_handles.append(fh)
                 sent_files.append(("files", (os.path.basename(path), fh, mime)))
 
@@ -465,12 +471,14 @@ class MainWindow(QMainWindow):
             except Exception:
                 saved = 0
 
-            self.run_on_ui_thread(
-                lambda: (
-                    QMessageBox.information(self, "Upload Complete", f"Successfully uploaded {saved or len(sent_files)} file(s) to server."),
-                    self.load_files()
-                )
-            )
+            def _notify():
+                msg = f"Successfully uploaded {saved or len(sent_files)} file(s) to server."
+                if skipped:
+                    msg += f"\nSkipped {len(skipped)} file(s) due to read errors."
+                QMessageBox.information(self, "Upload Complete", msg)
+                self.load_files()
+
+            self.run_on_ui_thread(_notify)
         except requests.RequestException as exc:
             self.run_on_ui_thread(
                 lambda: QMessageBox.warning(self, "Upload Failed", f"Server error during upload:\n{exc}")
@@ -727,6 +735,14 @@ class MainWindow(QMainWindow):
         if not save_path:
             return
 
+        # Ensure target directory exists
+        try:
+            target_dir = os.path.dirname(save_path) or "."
+            os.makedirs(target_dir, exist_ok=True)
+        except Exception as e:
+            QMessageBox.warning(self, "Fehler", f"Zielordner konnte nicht erstellt werden:\n{e}")
+            return
+
         try:
             with requests.get(DOWNLOAD_ENDPOINT_TEMPLATE.format(id=file_id), stream=True, timeout=self.server_timeout) as r:
                 r.raise_for_status()
@@ -737,6 +753,8 @@ class MainWindow(QMainWindow):
             QMessageBox.information(self, "Erfolg", f"Datei gespeichert: {save_path}")
         except requests.RequestException as exc:
             QMessageBox.warning(self, "Error", f"Download fehlgeschlagen.\n{exc}")
+        except OSError as exc:
+            QMessageBox.warning(self, "Fehler", f"Datei konnte nicht geschrieben werden:\n{exc}")
 
     # -------------------------- Database operations ----------------------- #
     def change_database_location(self):
@@ -747,32 +765,47 @@ class MainWindow(QMainWindow):
             self.current_db_path,
             "SQLite Database (*.db);;All Files (*)"
         )
-        
+
         if not new_path:
             return
-            
+
+        # Ensure destination directory exists
+        try:
+            dest_dir = os.path.dirname(new_path)
+            if dest_dir:
+                os.makedirs(dest_dir, exist_ok=True)
+        except Exception as e:
+            QMessageBox.warning(
+                self,
+                "Fehler",
+                f"Zielordner konnte nicht erstellt werden:\n{e}"
+            )
+            return
+
         try:
             # Close current connection
             self.conn.close()
-            
+
             # Copy current database to new location if it exists
             if os.path.exists(self.current_db_path):
                 shutil.copy2(self.current_db_path, new_path)
-            
-            # Update current path and reconnect
-            self.current_db_path = new_path
-            self.conn = sqlite3.connect(self.current_db_path)
+
+            # Reconnect to the new database first
+            new_conn = sqlite3.connect(new_path)
+            self.conn = new_conn
             self._init_db()
-            
+            # Update current path only after successful connection
+            self.current_db_path = new_path
+
             # Refresh the file list
             self.load_files()
-            
+
             QMessageBox.information(
                 self,
                 "Erfolg",
                 f"Datenbank-Speicherort geändert zu:\n{new_path}"
             )
-            
+
         except Exception as exc:
             QMessageBox.warning(
                 self,
@@ -791,29 +824,34 @@ class MainWindow(QMainWindow):
                 "Keine Datenbank zum Exportieren gefunden."
             )
             return
-            
+
         export_path, _ = QFileDialog.getSaveFileName(
             self,
             "Datenbank exportieren",
             f"file_manager_backup_{os.path.basename(self.current_db_path)}",
             "SQLite Database (*.db);;All Files (*)"
         )
-        
+
         if not export_path:
             return
-            
+
         try:
             self.conn.commit()
-            
+
+            # Ensure target directory exists
+            dirp = os.path.dirname(export_path)
+            if dirp:
+                os.makedirs(dirp, exist_ok=True)
+
             # Copy the database file
             shutil.copy2(self.current_db_path, export_path)
-            
+
             QMessageBox.information(
                 self,
                 "Erfolg",
                 f"Datenbank erfolgreich exportiert nach:\n{export_path}"
             )
-            
+
         except Exception as exc:
             QMessageBox.warning(
                 self,
@@ -829,10 +867,10 @@ class MainWindow(QMainWindow):
             "",
             "SQLite Database (*.db);;All Files (*)"
         )
-        
+
         if not import_path:
             return
-            
+
         # Confirm the import operation
         reply = QMessageBox.question(
             self,
@@ -842,15 +880,15 @@ class MainWindow(QMainWindow):
             QMessageBox.Yes | QMessageBox.No,
             QMessageBox.No
         )
-        
+
         if reply != QMessageBox.Yes:
             return
-            
+
         try:
             # Validate that the file is a valid SQLite database
             test_conn = sqlite3.connect(import_path)
             test_cursor = test_conn.cursor()
-            
+
             # Check if it has the expected table structure
             test_cursor.execute(
                 "SELECT name FROM sqlite_master WHERE type='table' AND name='files'"
@@ -863,28 +901,32 @@ class MainWindow(QMainWindow):
                     "Die ausgewählte Datei scheint keine gültige Fileuploader-Datenbank zu sein."
                 )
                 return
-                
+
             test_conn.close()
-            
+
             # Close current connection
             self.conn.close()
-            
+
+            # Ensure destination directory exists for current DB path
+            dest_dir = os.path.dirname(self.current_db_path) or "."
+            os.makedirs(dest_dir, exist_ok=True)
+
             # Replace current database with imported one
             shutil.copy2(import_path, self.current_db_path)
-            
+
             # Reconnect to the new database
             self.conn = sqlite3.connect(self.current_db_path)
             self._init_db()
-            
+
             # Refresh the file list
             self.load_files()
-            
+
             QMessageBox.information(
                 self,
                 "Erfolg",
                 f"Datenbank erfolgreich importiert von:\n{import_path}"
             )
-            
+
         except Exception as exc:
             QMessageBox.warning(
                 self,
