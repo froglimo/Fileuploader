@@ -60,7 +60,9 @@ def _ensure_venv_and_reexec():
             _run_pip(["install", "--disable-pip-version-check"] + required)
 
         # If not already running inside this venv, re-exec using it
-        in_our_venv = _os.path.abspath(_sys.executable).startswith(_os.path.abspath(venv_dir))
+        in_our_venv = _os.path.normcase(_os.path.realpath(_sys.executable)).startswith(
+            _os.path.normcase(_os.path.realpath(venv_dir))
+        )
         already = _os.environ.get("FILEUPLOADER_BOOTSTRAPPED") == "1"
         if not in_our_venv and not already:
             _os.environ["FILEUPLOADER_BOOTSTRAPPED"] = "1"
@@ -154,10 +156,10 @@ from PySide6.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
     QGridLayout, QFrame, QPushButton, QFileDialog, QListWidget,
     QListWidgetItem, QLabel, QMessageBox, QAbstractItemView, QCheckBox, QSpinBox, QStyle,
-    QAction, QSizePolicy,
+    QSizePolicy,
 )
 from PySide6.QtCore import Qt, QEvent, QT_VERSION_STR
-from PySide6.QtGui import QDragEnterEvent, QDropEvent, QIcon, QPixmap, QWindow, QPalette, QColor
+from PySide6.QtGui import QAction, QDragEnterEvent, QDropEvent, QIcon, QPixmap, QWindow, QPalette, QColor
 
 import threading
 
@@ -632,7 +634,7 @@ class MainWindow(QMainWindow):
             "© Release 25.06.2024<br>"
             "Mit Liebe gecodet durch Max Krebs"
         )
-        msg.exec_()
+        msg.exec()
 
     def show_about_dialog(self):
         QMessageBox.about(
