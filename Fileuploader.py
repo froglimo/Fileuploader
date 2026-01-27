@@ -1,8 +1,8 @@
 import os
 import sys
 
-# Persistent virtual environment bootstrap in the user's home directory.
-# Creates or reuses ~/.fileuploader_venv and ensures required packages are installed.
+# Persistent virtual environment bootstrap in the project root directory.
+# Creates or reuses ./.venv next to this file and ensures required packages are installed.
 def _ensure_venv_and_reexec():
     try:
         import os as _os
@@ -10,14 +10,22 @@ def _ensure_venv_and_reexec():
         import subprocess as _subprocess
         import venv as _venv
 
-        home = _os.path.expanduser("~")
-        venv_dir = _os.path.join(home, ".fileuploader_venv")
+        # Bind virtual environment to the project root (directory of this file)
+        project_root = _os.path.dirname(_os.path.abspath(__file__))
+        venv_dir = _os.path.join(project_root, ".venv")
         if _os.name == "nt":
             venv_python = _os.path.join(venv_dir, "Scripts", "python.exe")
         else:
             venv_python = _os.path.join(venv_dir, "bin", "python")
 
-        required = ["Flask", "requests", "packaging", "PyQt5"]
+        # All Python dependencies used by this application
+        required = [
+            "Flask",
+            "Werkzeug",
+            "requests",
+            "packaging",
+            "PySide6",
+        ]
 
         def _run_pip(args):
             cmd = [venv_python, "-m", "pip"] + args
@@ -29,6 +37,8 @@ def _ensure_venv_and_reexec():
                     check=False,
                 )
             except Exception:
+                # Do not crash if pip fails; runtime imports may still work if
+                # dependencies are already available in the environment.
                 pass
 
         # Create venv if missing
@@ -38,8 +48,15 @@ def _ensure_venv_and_reexec():
             except Exception:
                 # If creation fails, fall back to system interpreter
                 return
-            # Bootstrap pip toolchain and install requirements
-            _run_pip(["install", "--disable-pip-version-check", "-U", "pip", "setuptools", "wheel"])
+            # Bootstrap pip toolchain and install requirements into the local .venv
+            _run_pip([
+                "install",
+                "--disable-pip-version-check",
+                "-U",
+                "pip",
+                "setuptools",
+                "wheel",
+            ])
             _run_pip(["install", "--disable-pip-version-check"] + required)
 
         # If not already running inside this venv, re-exec using it
@@ -130,19 +147,17 @@ def handle_single_file_upload():
 # Additional routes (optional) ------------------------------------------------
 # You can add more endpoints here (e.g. /download) if needed by other clients.
 # --------------------------------------------------------------------------- #
-# Removed redundant import that shadowed later Qt enum import
-from PyQt5.QtWidgets import QMenuBar, QApplication
+# Qt 6.10 / PySide6 imports
+from PySide6.QtWidgets import QMenuBar, QApplication
 
-# import flask  # still available if you want to spin up the server in‐process
-from PyQt5.QtWidgets import (
+from PySide6.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
     QGridLayout, QFrame, QPushButton, QFileDialog, QListWidget,
     QListWidgetItem, QLabel, QMessageBox, QAbstractItemView, QCheckBox, QSpinBox, QStyle,
-    QAction
+    QAction, QSizePolicy,
 )
-from PyQt5.QtCore import Qt, QEvent, QT_VERSION_STR
-from PyQt5.QtGui import QDragEnterEvent, QDropEvent, QIcon, QPixmap, QWindow, QPalette, QColor
-from PyQt5.QtWidgets import QStyle, QSizePolicy
+from PySide6.QtCore import Qt, QEvent, QT_VERSION_STR
+from PySide6.QtGui import QDragEnterEvent, QDropEvent, QIcon, QPixmap, QWindow, QPalette, QColor
 
 import threading
 
@@ -187,7 +202,7 @@ class AutorWindow(QWidget):
         image_label = QLabel()
         image_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         try:
-            from PyQt5.QtGui import QPixmap
+            from PySide6.QtGui import QPixmap
             response = requests.get(image_url)
             if response.status_code == 200:
                 pixmap = QPixmap()
@@ -602,7 +617,7 @@ class MainWindow(QMainWindow):
         msg.setWindowTitle("Autor")
         image_url = "https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=200&q=60"
         try:
-            from PyQt5.QtGui import QPixmap
+            from PySide6.QtGui import QPixmap
             response = requests.get(image_url)
             if response.status_code == 200:
                 pixmap = QPixmap()
@@ -1149,7 +1164,8 @@ def main():
     app = QApplication(sys.argv)
     window = MainWindow()
     window.show()
-    sys.exit(app.exec_())
+    # Qt 6 / PySide6 uses exec() instead of exec_()
+    sys.exit(app.exec())
 
 if __name__ == "__main__":
     main()
