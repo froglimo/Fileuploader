@@ -158,7 +158,7 @@ from PySide6.QtWidgets import (
     QListWidgetItem, QLabel, QMessageBox, QAbstractItemView, QCheckBox, QSpinBox, QStyle,
     QSizePolicy,
 )
-from PySide6.QtCore import Qt, QEvent, QT_VERSION_STR
+from PySide6.QtCore import Qt, QEvent, qVersion
 from PySide6.QtGui import QAction, QDragEnterEvent, QDropEvent, QIcon, QPixmap, QWindow, QPalette, QColor
 
 import threading
@@ -435,6 +435,7 @@ class MainWindow(QMainWindow):
 
         # Menu bar
         self._create_menu()
+        self._apply_menu_palette_styles()
 
         # DB connection
         self.conn = sqlite3.connect(self.current_db_path)
@@ -613,7 +614,47 @@ class MainWindow(QMainWindow):
         act_about.triggered.connect(self.show_about_dialog)
         help_menu.addAction(act_about)
         help_menu.addAction(act_autor)
-   
+
+    def _apply_menu_palette_styles(self):
+        # Ensure menubar and menus follow the current palette (light/dark)
+        self.setStyleSheet(
+            """
+            QMenuBar {
+                background: palette(window);
+                color: palette(window-text);
+                border: 1px solid palette(mid);
+                border-radius: 8px;
+                padding: 3px 6px;
+                margin: 4px 6px;
+            }
+            QMenuBar::item {
+                background: transparent;
+                padding: 3px 8px;
+                border-radius: 6px;
+            }
+            QMenuBar::item:selected {
+                background: palette(highlight);
+                color: palette(highlighted-text);
+            }
+            QMenu {
+                background: palette(base);
+                color: palette(text);
+                border: 1px solid palette(mid);
+                border-radius: 6px;
+                padding: 4px;
+            }
+            QMenu::item:selected {
+                background: palette(highlight);
+                color: palette(highlighted-text);
+            }
+            QMenu::separator {
+                background: palette(mid);
+                height: 1px;
+                margin: 4px 6px;
+            }
+            """
+        )
+
     def show_autor(self):
         msg = QMessageBox(self)
         msg.setWindowTitle("Autor")
@@ -999,7 +1040,7 @@ class SettingsWindow(QWidget):
             return
 
         # -------- Helper lambdas so we can look up enum members safely ----------
-        qt6 = Version(QT_VERSION_STR).major >= 6
+        qt6 = Version(qVersion()).major >= 6
 
         def pal_role(key: str):
             """Return the correct QPalette role constant for Qt5 / Qt6."""
@@ -1077,10 +1118,8 @@ class SettingsWindow(QWidget):
 
         # Frame for nice white background
         frame = QFrame(self)
+        # Inherit application palette so it works in light and dark modes
         frame.setAutoFillBackground(True)
-        frame_pal = frame.palette()
-        frame_pal.setColor(QPalette.Window, Qt.white)
-        frame.setPalette(frame_pal)
 
         frame_layout = QVBoxLayout(frame)
         frame_layout.setContentsMargins(20, 20, 20, 20)
@@ -1091,7 +1130,7 @@ class SettingsWindow(QWidget):
             "<p>Hier können Sie Ihre Einstellungen anpassen.</p>"
         )
         heading.setStyleSheet(
-            "QLabel { color: #374151; font-size: 20px; font-weight: 600; }"
+            "QLabel { font-size: 20px; font-weight: 600; }"
         )
 
         frame_layout.addWidget(heading)
