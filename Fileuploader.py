@@ -596,13 +596,13 @@ class MainWindow(QMainWindow):
         # Bearbeiten
         edit_menu = menubar.addMenu("&Bearbeiten")
         act_undo = QAction("Rückgängig", self)
-        act_undo.setShortcut("Ctrl+Z")
+        act_undo.setShortcut("Ctrl + Z")
         edit_menu.addAction(act_undo)
         act_redo = QAction("Wiederholen", self)
-        act_redo.setShortcut("Ctrl+Y")
+        act_redo.setShortcut("Ctrl + Y")
         edit_menu.addAction(act_redo)
         act_edit_menu = QAction("Einstellungen", self)
-        act_edit_menu.setShortcut("Ctrl+I")
+        act_edit_menu.setShortcut("Ctrl + I")
         act_edit_menu.triggered.connect(self.show_settings_window)
         edit_menu.addAction(act_edit_menu)
 
